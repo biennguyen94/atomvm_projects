@@ -30,7 +30,7 @@ RUN git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git r
     ./bootstrap &&\
     ./rebar3 local install
 
-ENV PATH $PATH:/root/.cache/rebar3/bin
+ENV PATH $PATH:$HOME/.cache/rebar3/bin
 
 # Add gcc-arm-embedded ppa and install gcc-arm-embedded
 RUN echo "deb http://ppa.launchpad.net/team-gcc-arm-embedded/ppa/ubuntu bionic main" >> /etc/apt/sources.list && \
