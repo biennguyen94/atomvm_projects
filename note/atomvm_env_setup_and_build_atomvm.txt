@@ -1,0 +1,68 @@
+############ Install libs
+### gcc, g++ and make
+sudo apt install build-essential
+
+sudo apt install cmake
+sudo apt install gperf
+sudo apt install zlib1g
+sudo apt-get install minicom
+sudo apt-get install zlib1g-dev libssl-dev -y
+sudo apt-get install libwxbase3.0-0v5 libwxgtk3.0-0v5 libsctp1 -y
+
+
+############ Install Erlang OTP 21.0
+https://www.erlang-solutions.com/downloads/
+
+wget https://packages.erlang-solutions.com/erlang/debian/pool/esl-erlang_21.0-1~ubuntu~bionic_amd64.deb
+dpkg -i esl-erlang_21.0-1~ubuntu~bionic_amd64.deb
+
+wget https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
+sudo apt-key add erlang_solutions.asc
+sudo apt-get install esl-erlang -y
+
+
+############ Install rebar3
+git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar3
+
+cd rebar3
+./bootstrap
+
+./rebar3 local install
+export PATH=/root/.cache/rebar3/bin:$PATH
+
+#to build .avm
+rebar3 packbeam
+
+
+############ Build AtomVM
+git clone https://github.com/atomvm/AtomVM
+
+mkdir build
+cd build
+cmake ..
+
+make -j 8
+
+unit test can be ran with: ./tests/test-erlang
+./src/AtomVM ./tests/erlang_tests/floatabs.beam
+
+re-build test beam file after test changes:
+cd /home/bien/proj/AtomVM/build/tests
+make
+/proj/AtomVM/build/src/AtomVM ./tests/erlang_tests/floatabs.beam
+
+
+############ Building for ESP32
+cd <atomvm-source-tree-root>
+cd src/platforms/esp32
+
+make menuconfig
+make -j 8
+
+./tools/release/esp32/mkimage.sh
+
+esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash
+FLASH_OFFSET=0x1000 ./tools/dev/flash.sh ./src/platforms/esp32/build/atomvm-602e6bc.img
+./tools/dev/flash.sh examples/erlang/esp32/blink.avm
+
+
