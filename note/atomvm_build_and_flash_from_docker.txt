@@ -1,0 +1,6 @@
+https://forums.docker.com/t/how-to-expose-host-serial-port-to-container-correctly/81588/2
+https://www.losant.com/blog/how-to-access-serial-devices-in-docker
+https://stackoverflow.com/questions/24225647/docker-a-way-to-give-access-to-a-host-usb-or-serial-device
+
+
+docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it bien_atomvm.test bash
