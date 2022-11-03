@@ -4,7 +4,7 @@ FROM ubuntu:bionic
 WORKDIR /root
 
 # Prepare directories
-RUN mkdir -p /tools/esp 
+RUN mkdir -p /tools/esp
 
 # Install common deps
 RUN apt-get -qq update && apt-get -qq install git cmake
