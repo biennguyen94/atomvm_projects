@@ -182,8 +182,9 @@ PID:
 http://www.hocavr.com/2018/06/ieu-khien-ong-co-dc-servo-pid.html
 
 ESP32:
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32/hw-reference/esp32/get-started-devkitc.html
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32/_images/esp32-devkitC-v4-pinout.png
 https://khuenguyencreator.com/lap-trinh-esp32-webserver-che-do-wifi-station/
-
 
 
 
