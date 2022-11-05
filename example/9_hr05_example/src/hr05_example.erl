@@ -21,23 +21,34 @@
 -module(hr05_example).
 -export([start/0]).
 
--define(TRIG, 2).
--define(ECHO, 3).
+-define(TRIG, 0).
+-define(ECHO, 4).
 
 start() ->
-    gpio:set_pin_mode(?TRIG, output),
-    gpio:set_pin_mode(?ECHO, input),
+    GPIO = gpio:start(),
+    gpio:set_direction(GPIO, ?ECHO, input),
+    gpio:set_direction(GPIO, ?TRIG, output),
+    % gpio:set_pin_pull(?ECHO, down),
+    % gpio:set_pin_mode(?ECHO, input),
     timer:sleep(2),
     loop().
 
 loop() ->
+    io:format("Echo 1: ~n"),
     trigger_pin_setup(),
+    Echo = gpio:digital_read(?ECHO),
+    io:format("Echo: ~p~n", [Echo]),
     SensorTime = read_echo_time(0),
-    Distance = SensorTime * 0.034/2,
-    io:format("Distance: ~p~n", [Distance]),
-    timer:sleep(3000),
+    Distance = mul(SensorTime, 0.017),
+    erlang:display(Distance),
+    timer:sleep(1000),
     loop().
 
+mul(A, B) ->
+    id(A) * id(B).
+
+id(I) ->
+    I.
 
 trigger_pin_setup() ->
     gpio:digital_write(?TRIG, low),
@@ -45,6 +56,7 @@ trigger_pin_setup() ->
     gpio:digital_write(?TRIG, high),
     usleep(10),
     gpio:digital_write(?TRIG, low).
+
 
 read_echo_time(0) ->
     LocalTime = do_read_echo_time(0),
@@ -64,33 +76,20 @@ do_read_echo_time(LocalTime) ->
 usleep(Time) when is_integer(Time) andalso Time >= 0 ->
     do_usleep(Time),
     receive
-        sleep_done -> ok
+        sleep_done ->
+            ok
     end.
 do_usleep(Time) ->
-    MonotonicTime = erlang:system_time(microsecond),
-    do_usleep(MonotonicTime, Time).
+    {MegaSecs, Secs, MicroSecs} = erlang:timestamp(),
+    UsSecs = (MegaSecs * 1000000 + Secs) * 1000000 + MicroSecs,
+    do_usleep(UsSecs, Time).
 
 do_usleep(Start, Time) ->
-    case erlang:system_time(microsecond) - Start >= Time of
+    {MegaSecs, Secs, MicroSecs} = erlang:timestamp(),
+    UsSecs = (MegaSecs * 1000000 + Secs) * 1000000 + MicroSecs,
+    case UsSecs - Start >= Time of
         true ->
             self() ! sleep_done;
         _ ->
             do_usleep(Start, Time)
     end.
-
-% usleep(Time) when is_integer(Time) andalso Time >= 0 ->
-%     do_usleep(Time),
-%     receive
-%         sleep_done -> ok
-%     end.
-% do_usleep(Time) ->
-%     MonotonicTime = erlang:monotonic_time(microsecond),
-%     do_usleep(MonotonicTime, Time).
-
-% do_usleep(Start, Time) ->
-%     case erlang:monotonic_time(microsecond) - Start >= Time of
-%         true ->
-%             self() ! sleep_done;
-%         _ ->
-%             do_usleep(Start, Time)
-%     end.

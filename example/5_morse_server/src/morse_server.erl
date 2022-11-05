@@ -26,8 +26,8 @@ start() ->
     Self = self(),
     Config = [
         {sta, [
-            {ssid, esp:nvs_get_binary(atomvm, sta_ssid, <<"myssid">>)},
-            {psk,  esp:nvs_get_binary(atomvm, sta_psk, <<"mypsk">>)},
+            {ssid, esp:nvs_get_binary(atomvm, sta_ssid, <<"HBTBK">>)},
+            {psk,  esp:nvs_get_binary(atomvm, sta_psk, <<"49494949">>)},
             {connected, fun() -> Self ! connected end},
             {got_ip, fun(IpInfo) -> Self ! {ok, IpInfo} end},
             {disconnected, fun() -> Self ! disconnected end}

@@ -25,7 +25,7 @@ get() ->
     #{
         port => 8080,
         sta => [
-            {ssid, "my_sta_ssid"},
-            {psk, "my_sta_psk"}
+            {ssid, "HBTBK"},
+            {psk, "49494949"}
         ]
     }.
