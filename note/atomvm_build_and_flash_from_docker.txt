@@ -8,8 +8,10 @@ docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it bien_atomvm.test b
 
 #check by command in container: ls /dev/tty*, if we can see /dev/ttyUSB0, then we are success
 
-cd /tools/atomvm_examples/erlang/blinky/
+cd /tools/atomvm_basic_projects/example/2_blinky/
+
 rebar3 packbeam
+
 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
     --port /dev/ttyUSB0 \
@@ -20,9 +22,9 @@ ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     -u --flash_mode dio --flash_freq 40m \
     --flash_size detect \
     0x210000 \
-    /tools/atomvm_examples/erlang/blinky/_build/default/lib/blinky.avm
+    /tools/atomvm_basic_projects/example/2_blinky/_build/default/lib/blinky.avm
 
-
+minicom -D /dev/ttyUSB0
 
 #access to container  (for 2nd times)
 docker start bien_atomvm

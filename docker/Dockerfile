@@ -10,6 +10,9 @@ RUN mkdir -p /tools/esp
 RUN apt-get -qq update && apt-get -qq install git cmake
 RUN apt-get install zlib1g-dev libssl-dev -y
 
+# Install minicom
+RUN apt-get install minicom -y
+
 # Install esp-idf deps
 RUN apt-get -qq install wget make libncurses-dev flex bison gperf \
     python python-pip python-setuptools python-serial python-cryptography \
