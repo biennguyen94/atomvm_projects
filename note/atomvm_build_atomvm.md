@@ -1,36 +1,49 @@
-############ Build AtomVM
+# Build AtomVM
+```
 git clone https://github.com/atomvm/AtomVM
+```
 
-# to build libs and tests
+## To build libs and tests
+```
 mkdir build
 cd build
 cmake ..
 make -j 8
+```
 
-# unit test can be ran with:
+## Unit test can be ran with
+```
 ./tests/test-erlang
 ./src/AtomVM ./tests/erlang_tests/floatabs.beam
+```
 
-# to re-build test beam file after test changes:
+## To re-build test beam file after test changes
+```
 cd /tools/AtomVM/build/tests
 make
 /tools/AtomVM/build/src/AtomVM ./tests/erlang_tests/floatabs.beam
+```
 
-
-############ Building for ESP32
-# to build esp32 platform
+# Build for ESP32
+## To build esp32 platform
+```
 cd /tools/AtomVM/src/platforms/esp32
 make menuconfig (then just press E)
 make -j 8
+```
 
-# to create .img
+## To create .img
+```
 ./tools/release/esp32/mkimage.sh
+```
 
-# to erase the flash
+## To erase the flash
+```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
+```
 
-# to flash the entire image to device
-#FLASH_OFFSET=0x1000 /tools/AtomVM/tools/dev/flash.sh /tools/AtomVM/atomvm-esp32-0.5.0.img
+## To flash the entire image to device
+```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
     --port /dev/ttyUSB0 \
@@ -42,14 +55,17 @@ sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --flash_size detect \
     0x1000 \
     /tools/AtomVM/atomvm-esp32-0.5.0.img
+```
+Or this script can be used: `FLASH_OFFSET=0x1000 /tools/AtomVM/tools/dev/flash.sh /tools/AtomVM/atomvm-esp32-0.5.0.img`
 
-
-############ For develop the application
-# to build .avm
+# For develop the application
+## To build .avm
+```
 rebar3 packbeam
+```
 
-# to flash own application
-#/tools/AtomVM/tools/dev/flash.sh /tools/AtomVM/examples/erlang/esp32/blink.avm
+## To flash own application
+```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
     --port /dev/ttyUSB0 \
@@ -61,5 +77,7 @@ sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --flash_size detect \
     0x210000 \
     /tools/atomvm_examples/erlang/blinky/_build/default/lib/blinky.avm
+```
+Or this script can be used: `/tools/AtomVM/tools/dev/flash.sh /tools/AtomVM/examples/erlang/esp32/blink.avm`
 
 

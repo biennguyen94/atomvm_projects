@@ -1,9 +1,0 @@
-#build image with Dockerfile
-docker build --network host -t bien_atomvm.test .
-
-#delpoy container with image
-docker run --name bien_atomvm --net host -it bien_atomvm.test
-
-#access to container 
-docker start bien_atomvm
-docker exec -it bien_atomvm bash

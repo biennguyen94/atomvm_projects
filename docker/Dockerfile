@@ -47,8 +47,7 @@ WORKDIR /tools/esp
 
 # Get xtensa toolchain
 RUN wget https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz -O xtensa-toolchain.tar.gz && \
-    tar xf xtensa-toolchain.tar.gz && \
-    rm xtensa-toolchain.tar.gz
+    tar xf xtensa-toolchain.tar.gz
 
 # Add xtensa toolchain to path
 ENV PATH $PATH:/tools/esp/xtensa-esp32-elf/bin
