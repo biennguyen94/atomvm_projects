@@ -1,4 +1,4 @@
-# `i2c_example` Application
+# `mpu6050_example` Application
 
 Welcome to the `mpu6050_example` AtomVM application.
 

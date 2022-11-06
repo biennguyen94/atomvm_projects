@@ -1,4 +1,4 @@
-# `i2c_example` Application
+# `encoder_example` Application
 
 Welcome to the `encoder_example` AtomVM application.
 

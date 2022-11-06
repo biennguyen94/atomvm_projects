@@ -2,12 +2,24 @@
 https://go.microsoft.com/fwlink/?LinkID=760868
 sudo apt install ./<file>.deb
 
+###Install libs
+## gcc, g++ and make
+sudo apt install build-essential
+
+sudo apt install cmake
+sudo apt install gperf
+sudo apt install zlib1g
+sudo apt-get install minicom
+sudo apt-get install zlib1g-dev libssl-dev -y
+sudo apt-get install libwxbase3.0-0v5 libwxgtk3.0-0v5 libsctp1 -y
+
 ## Git
 sudo apt install git-all
 git clone https://github.com/biennguyen94/atomvm_basic_projects.git
 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
 
 ## Erlang
+https://www.erlang-solutions.com/downloads/
 sudo apt-get install libwxbase3.0-0v5 libwxgtk3.0-0v5 libsctp1 -y
 sudo wget https://packages.erlang-solutions.com/erlang/debian/pool/esl-erlang_21.0-1~ubuntu~bionic_amd64.deb
 sudo dpkg -i esl-erlang_21.0-1~ubuntu~bionic_amd64.deb

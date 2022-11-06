@@ -1,8 +1,8 @@
-# `i2c_example` Application
+# `sr05_example` Application
 
-Welcome to the `hr05_example` AtomVM application.
+Welcome to the `sr05_example` AtomVM application.
 
-The `hr05_example` AtomVM application demonstrates use of calculate the distance via HR05.
+The `sr05_example` AtomVM application demonstrates use of calculate the distance via HR05.
 
 For more information about programming on the AtomVM platform, see the [AtomVM Programmers Guide](https://doc.atomvm.net/programmers-guide.html).
 

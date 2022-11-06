@@ -1,4 +1,4 @@
-# `i2c_example` Application
+# `self_balancing_robot` Application
 
 Welcome to the `self_balancing_robot` AtomVM application.
 
