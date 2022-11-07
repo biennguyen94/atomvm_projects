@@ -172,17 +172,26 @@ https://github.com/espressif/esp-idf
 	
 reading/writing Gyro/Acc value for MPU6050:
 https://howtomechatronics.com/tutorials/arduino/arduino-and-mpu6050-accelerometer-and-gyroscope-tutorial/
+
 https://playground.arduino.cc/Main/MPU-6050/#multiple
+
 https://github.com/leech001/MPU6050/blob/master/examples/STM32F401CCU6_MPU6050/Core/Src/mpu6050.c (Kalman filter)
+
+https://create.arduino.cc/projecthub/MinukaThesathYapa/arduino-mpu6050-accelerometer-f92d8b
 
 
 MPU6050 dattasheet:
 https://pdf1.alldatasheet.com/datasheet-pdf/view/1132807/TDK/MPU-6050.html
 
-HR 04: https://controllerstech.blogspot.com/2019/10/hc-sr04-and-stm32.html
+MPU6500 datasheet:
+https://invensense.tdk.com/wp-content/uploads/2015/02/MPU-6500-Register-Map2.pdf
+
+HR 04:
+https://controllerstech.blogspot.com/2019/10/hc-sr04-and-stm32.html
 
 Balancing robot:
 https://create.arduino.cc/projecthub/marketingmanagerofdattabanur/arduino-self-balancing-robot-e23f9c?ref=part&ref_id=11332&offset=6
+
 https://github.com/sonphambk/2-WHEEL-SELF-BALANCING-ROBOT-WITH-STM32F103/blob/master/Src/main.c
 
 PID:
@@ -190,7 +199,9 @@ http://www.hocavr.com/2018/06/ieu-khien-ong-co-dc-servo-pid.html
 
 ESP32:
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/hw-reference/esp32/get-started-devkitc.html
+
 https://docs.espressif.com/projects/esp-idf/en/latest/esp32/_images/esp32-devkitC-v4-pinout.png
+
 https://khuenguyencreator.com/lap-trinh-esp32-webserver-che-do-wifi-station/
 
 # Reference
