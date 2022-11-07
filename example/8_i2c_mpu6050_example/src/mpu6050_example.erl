@@ -32,6 +32,9 @@
 -define (ACCEL_ZOUT_H, 16#3F).
 -define (ACCEL_ZOUT_L, 16#40).
 
+-define (TEMP_OUT_H, 16#41).
+-define (TEMP_OUT_L, 16#42).
+
 -define (GYRO_XOUT_H, 16#43).
 -define (GYRO_XOUT_L, 16#44).
 -define (GYRO_YOUT_H, 16#45).
@@ -39,10 +42,26 @@
 -define (GYRO_ZOUT_H, 16#47).
 -define (GYRO_ZOUT_L, 16#48).
 
+
+-define(Ax_off, 0.0306123048).
+-define(Ay_off, -0.00247998047).
+-define(Az_off, 1.00272071).
+
+-define(Gx_off, 376.86).
+-define(Gy_off, 93.00).
+-define(Gz_off, -92.64).
+
+-define(RotX_Inv, 0.0076335877862595). %1/131
+-define(GForce_Inv, 0.00006103515625). %1/16384
+
+
+-define(Temperature_Inv, 0.00294). %1/340
+
+
 %Note: This module is used to read the raw values (accelerometer and gyro)
 
 start() ->
-    I2C = i2c:open([{scl_io_num, 15}, {sda_io_num, 4}, {i2c_clock_hz, 1000000}]),
+    I2C = i2c:open([{scl_io_num, 22}, {sda_io_num, 21}, {i2c_clock_hz, 100000}]),
     setup(I2C),
     loop(I2C).
 
@@ -53,12 +72,30 @@ setup(I2C) ->
     i2c:end_transmission(I2C).
 
 loop(I2C) ->
-    ValAcc = read_acc(I2C),
-    ValGyro = read_gyro(I2C),
-    erlang:display(ValAcc),
-    erlang:display(ValGyro),
-    timer:sleep(10000),
+    angle_calculation(I2C),
+    {ok, TemperatureRaw} = read_tmp(I2C),
+    Temperature = id(TemperatureRaw)*id(?Temperature_Inv) + id(21),
+    io:format("Temperature: ~p ~n", [Temperature]),
+    timer:sleep(2000),
     loop(I2C).
+
+angle_calculation(I2C) ->
+    {ok, A_x, A_y, A_z} = read_acc(I2C),
+    io:format("A_x, A_y, A_z: ~p, ~p, ~p ~n", [A_x, A_y,A_z]),
+
+    {ok, G_x, G_y, G_z} = read_gyro(I2C),
+    io:format("G_x, G_y, G_z: ~p, ~p, ~p ~n", [G_x, G_y, G_z]),
+
+    GForcex = (id(A_x) - id(?Ax_off))*id(?GForce_Inv),
+    GForcey = (id(A_y) - id(?Ay_off))*id(?GForce_Inv),
+    GForcez = (id(A_z) - id(?Az_off))*id(?GForce_Inv),
+    io:format("GForcex, GForcey, GForcez: ~p, ~p, ~p ~n", [GForcex, GForcey, GForcez]),
+
+    RotX = (id(G_x) - id(?Gx_off))*id(?RotX_Inv),
+    RotY = (id(G_y) - id(?Gy_off))*id(?RotX_Inv),
+    RotZ = (id(G_z) - id(?Gz_off))*id(?RotX_Inv),
+    io:format("RotX, RotY, RotZ: ~p, ~p, ~p ~n", [RotX, RotY, RotZ]),
+    ok.
 
 % === Read acceleromter data ===
 read_acc(I2C) ->
@@ -83,12 +120,31 @@ setup_gyro(I2C) ->
     i2c:write_byte(I2C, ?GYRO_XOUT_H),
     i2c:end_transmission(I2C).
 
-parse_bin(B) ->
-    ValueX = (binary:at(B, 0) bsl 8) bor binary:at(B, 1),
-    ValueY = (binary:at(B, 2) bsl 8) bor binary:at(B, 3),
-    ValueZ = (binary:at(B, 4) bsl 8) bor binary:at(B, 5),
+parse_bin(<<ValueX0:8/integer-signed, ValueX1:8/integer-signed,
+    ValueY0:8/integer-signed, ValueY1:8/integer-signed,
+    ValueZ0:8/integer-signed, ValueZ1:8/integer-signed>> = B) ->
+%this can be (same meaning) parse_bin(<<ValueX:16/integer-signed, ValueY:16/integer-signed, ValueZ:16/integer-signed>>) ->
+    ValueX = (ValueX0 bsl 8) bor ValueX1,
+    ValueY = (ValueY0 bsl 8) bor ValueY1,
+    ValueZ = (ValueZ0 bsl 8) bor ValueZ1,
     {ok, ValueX, ValueY, ValueZ}.
 
+% === Read temperature data ===
+read_tmp(I2C) ->
+    setup_tmp(I2C),
+    Bin = i2c:read_bytes(I2C, ?MPU_addr, 2),
+    parse_bin_tmp(Bin).
+
+setup_tmp(I2C) ->
+    i2c:begin_transmission(I2C, ?MPU_addr),
+    i2c:write_byte(I2C, ?TEMP_OUT_H),
+    i2c:end_transmission(I2C).
+
+parse_bin_tmp(B) ->
+    ValueX = (binary:at(B, 0) bsl 8) bor binary:at(B, 1),
+    {ok, ValueX}.
+
+id(I) -> I.
 
 %   AcX=Wire.read()<<8|Wire.read();  // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
 %   AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)

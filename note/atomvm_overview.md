@@ -179,6 +179,13 @@ https://github.com/leech001/MPU6050/blob/master/examples/STM32F401CCU6_MPU6050/C
 
 https://create.arduino.cc/projecthub/MinukaThesathYapa/arduino-mpu6050-accelerometer-f92d8b
 
+http://arduino.vn/bai-viet/960-doi-dieu-ve-imu-inertial-measurement-unit
+
+http://arduino.vn/result/5473-robot-hai-banh-tu-can-bang-2-wheel-self-balancing-robot
+
+https://minhcly.wordpress.com/2014/01/30/quarternion-va-phep-quay-khong-gian-phan-1/
+
+http://etqtechpic.blogspot.com/2018/11/giao-tiep-modul-mpu6050.html
 
 MPU6050 dattasheet:
 https://pdf1.alldatasheet.com/datasheet-pdf/view/1132807/TDK/MPU-6050.html
