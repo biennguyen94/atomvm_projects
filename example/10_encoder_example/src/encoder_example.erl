@@ -32,9 +32,10 @@ start() ->
         ok ->
             gpio:set_pin_mode(?PIN, input),
             gpio:set_pin_pull(?PIN, up),
-            gpio:set_pin_mode(?PINB, input),
-            gpio:set_pin_pull(?PINB, up),
+            % gpio:set_pin_mode(?PINB, input),
+            % gpio:set_pin_pull(?PINB, up),
             GPIO = gpio:start(),
+            gpio:set_direction(GPIO, ?PINB, input),
             gpio:set_int(GPIO, ?PIN, falling),
             main();
         Error ->
@@ -89,7 +90,7 @@ interrupt(NewPulse, Pulse) ->
 do_interrupt(Pulse) ->
     case gpio:digital_read(?PINB) of
         low -> Pulse - 1;
-        _ -> Pulse + 1
+        high -> Pulse + 1
     end.
 
 verify_platform(esp32) ->
