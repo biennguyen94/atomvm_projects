@@ -14,7 +14,7 @@
 | `interrupt`  | ✅ |
 | `read encoder`  | ❌ |
 | `pwm (led)`  | ✅ |
-| `pwm (DC motor)`  | ❌ |
+| `pwm (DC motor)`  | ✅ |
 | `sr05`  | ❌ |
-| `mpu6050`  | ❌ |
+| `mpu6050`  | ✅ |
 | `balancing robot PID`  | ❌ |

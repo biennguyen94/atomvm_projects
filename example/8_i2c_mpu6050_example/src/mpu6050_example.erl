@@ -122,7 +122,7 @@ setup_gyro(I2C) ->
 
 parse_bin(<<ValueX0:8/integer-signed, ValueX1:8/integer-signed,
     ValueY0:8/integer-signed, ValueY1:8/integer-signed,
-    ValueZ0:8/integer-signed, ValueZ1:8/integer-signed>> = B) ->
+    ValueZ0:8/integer-signed, ValueZ1:8/integer-signed>>) ->
 %this can be (same meaning) parse_bin(<<ValueX:16/integer-signed, ValueY:16/integer-signed, ValueZ:16/integer-signed>>) ->
     ValueX = (ValueX0 bsl 8) bor ValueX1,
     ValueY = (ValueY0 bsl 8) bor ValueY1,
