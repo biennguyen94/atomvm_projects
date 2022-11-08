@@ -1,7 +1,7 @@
 %
 % This file is part of AtomVM.
 %
-% Copyright 2019-2020 Bien Nguyen <nguyennhubientdh94@gmail.com>
+% Copyright 2022 Fred Dushin <fred@dushin.net>
 %
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
@@ -18,55 +18,83 @@
 % SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 %
 
--module(encoder_example).
+-module(gpio_interrupt).
 
 -export([start/0]).
 
--define(PINA, 2).
--define(PINB, 3).
+-define(PIN, 2).
+-define(PINB, 0).
 -define(Interval, 25). %25ms
+-define(Interval_Inv, 40). %25ms
 
 start() ->
-    gpio:set_pin_mode(?PINA, input),
-    gpio:set_pin_mode(?PINB, input),
-    gpio:set_pin_pull(?PINA, up),
-    gpio:set_pin_pull(?PINB, up),
-    GPIO = gpio:start(),
-    gpio:set_int(GPIO, ?PINA, falling),
-    timer:sleep(1000),
-    main().
+    case verify_platform(atomvm:platform()) of
+        ok ->
+            gpio:set_pin_mode(?PIN, input),
+            gpio:set_pin_pull(?PIN, up),
+            gpio:set_pin_mode(?PINB, input),
+            gpio:set_pin_pull(?PINB, up),
+            GPIO = gpio:start(),
+            gpio:set_int(GPIO, ?PIN, falling),
+            main();
+        Error ->
+            Error
+    end.
 
 main()->
-    Pid = spawn(fun() -> interrupt(0, 0) end),
-    spawn(fun() -> sample_time(Pid) end).
+    Pid= self(),
+    Pid1 = spawn(fun() -> sample_time(Pid, 0) end),
+    spawn(fun() -> print(Pid1) end),
+    interrupt(0, 0).
 
-sample_time(Pid) ->
-    erlang:send_after(?Interval, Pid, {get_pulse, self()}),
+print(Pid1) ->
     receive
-        {pulse_value, NewPulse, Pulse} -> calculate_velocity(NewPulse, Pulse)
+        {velocity_value, VelocityValue} ->
+            io:format("Velocity ~p~n", [VelocityValue])
+    after 2000 ->
+        Pid1 ! {print, self()}
     end,
-    sample_time(Pid).
+    print(Pid1).
+
+sample_time(Pid, VelocityValue) ->
+    receive
+        {pulse_value, NewPulse, Pulse} ->
+            VelocityValueNew = calculate_velocity(NewPulse, Pulse),
+            sample_time(Pid, VelocityValueNew);
+        {print, From} -> From ! {velocity_value, VelocityValue}
+    after 25 ->
+        % io:format("sample_time, pid, self: ~p, ~p ~n", [Pid, self()]),
+        Pid ! {get_pulse, self()}
+    end,
+    sample_time(Pid, VelocityValue).
 
 calculate_velocity(NewPulse, Pulse) ->
-    Vel = (NewPulse-Pulse)*1000/?Interval,
-    io:format("Velocity ~p~n", [Vel]),
-    ok.
+    (NewPulse-Pulse)*?Interval_Inv.
 
 interrupt(NewPulse, Pulse) ->
-    io:format("Waiting for interrupt ... "),
+    % io:format("Waiting for interrupt ... "),
     receive
-        {gpio_interrupt, ?PINA} ->
-            io:format("Interrupt on pin ~p~n", [?PINA]),
+        {gpio_interrupt, ?PIN} ->
+            io:format("Interrupt on pin ~p~n", [?PIN]),
             NewPulse2 = do_interrupt(NewPulse),
+            io:format("Interrupt on pin, NewPulse2 ~p~n", [NewPulse2]),
+            % From ! {init_timer, NewPulse2, NewPulse},
             interrupt(NewPulse2, NewPulse);
         {get_pulse, From} ->
+            % io:format("interrupt ~n"),
             From ! {pulse_value, NewPulse, Pulse},
             interrupt(NewPulse, Pulse)
     end.
 
 do_interrupt(Pulse) ->
-    case not gpio:digital_read(?PINB) of
-        true -> Pulse + 1;
-        _ -> Pulse - 1
+    case gpio:digital_read(?PINB) of
+        low -> Pulse - 1;
+        _ -> Pulse + 1
     end.
 
+verify_platform(esp32) ->
+    ok;
+verify_platform(stm32) ->
+    ok;
+verify_platform(Platform) ->
+    {error, {unsupported_platform, Platform}}.
