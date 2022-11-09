@@ -195,3 +195,21 @@ to_morse(C) ->
         $Y -> "-.--   ";
         $Z -> "--..   "
     end.
+
+
+%     Body = [<<"  <body>
+%     <h1>ESP32-CAM Robot</h1>
+%     <table>
+%       <tr><td colspan=\"3\" align=\"center\"><button class=\"button\" onmousedown=\"toggleCheckbox('forward');\" ontouchstart=\"toggleCheckbox('forward');\" onmouseup=\"toggleCheckbox('stop');\" ontouchend=\"toggleCheckbox('stop');\">Forward</button></td></tr>
+%       <tr><td align=\"center\"><button class=\"button\" onmousedown=\"toggleCheckbox('left');\" ontouchstart=\"toggleCheckbox('left');\" onmouseup=\"toggleCheckbox('stop');\" ontouchend=\"toggleCheckbox('stop');\">Left</button></td><td align=\"center\"><button class=\"button\" onmousedown=\"toggleCheckbox('stop');\" ontouchstart=\"toggleCheckbox('stop');\">Stop</button></td><td align=\"center\"><button class=\"button\" onmousedown=\"toggleCheckbox('right');\" ontouchstart=\"toggleCheckbox('right');\" onmouseup=\"toggleCheckbox('stop');\" ontouchend=\"toggleCheckbox('stop');\">Right</button></td></tr>
+%       <tr><td colspan=\"3\" align=\"center\"><button class=\"button\" onmousedown=\"toggleCheckbox('backward');\" ontouchstart=\"toggleCheckbox('backward');\" onmouseup=\"toggleCheckbox('stop');\" ontouchend=\"toggleCheckbox('stop');\">Backward</button></td></tr>                   
+%     </table>
+%    <script>
+%    function toggleCheckbox(x) {
+%      var xhr = new XMLHttpRequest();
+%      xhr.open(\"GET\", \"/action?go=\" + x, true);
+%      xhr.send();
+%    }
+%    window.onload = document.getElementById(\"photo\").src = window.location.href.slice(0, -1) + \":81/stream\";
+%   </script>
+%   </body>">>],

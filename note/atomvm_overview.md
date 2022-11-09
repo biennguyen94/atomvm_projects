@@ -211,6 +211,8 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/_images/esp32-devkit
 
 https://khuenguyencreator.com/lap-trinh-esp32-webserver-che-do-wifi-station/
 
+https://randomnerdtutorials.com/esp32-cam-car-robot-web-server/
+
 # Reference
 https://github.com/atomvm/
 
