@@ -53,6 +53,8 @@
 
 -define(RotX_Inv, 0.0076335877862595). %1/131
 -define(GForce_Inv, 0.00006103515625). %1/16384
+-define(Interval, 0.025). %25ms
+-define(Interval_Calib, 0.1). %100ms
 
 
 -define(Temperature_Inv, 0.00294). %1/340
@@ -72,30 +74,77 @@ setup(I2C) ->
     i2c:end_transmission(I2C).
 
 loop(I2C) ->
-    angle_calculation(I2C),
-    {ok, TemperatureRaw} = read_tmp(I2C),
-    Temperature = id(TemperatureRaw)*id(?Temperature_Inv) + id(21),
-    io:format("Temperature: ~p ~n", [Temperature]),
-    timer:sleep(2000),
-    loop(I2C).
+    % {ok, TemperatureRaw} = read_tmp(I2C),
+    % Temperature = id(TemperatureRaw)*id(?Temperature_Inv) + id(21),
+    % io:format("Temperature: ~p ~n", [Temperature]),
+    Pid= self(),
+    % spawn(fun() -> print(Pid) end),
+    timer_interupt(I2C, 0).
 
-angle_calculation(I2C) ->
-    {ok, A_x, A_y, A_z} = read_acc(I2C),
-    io:format("A_x, A_y, A_z: ~p, ~p, ~p ~n", [A_x, A_y,A_z]),
+print(Pid1) ->
+    receive
+        {mpu_value, AngleRoll} ->
+            io:format("AngleRoll ~p~n", [AngleRoll])
+    after 3000 ->
+        Pid1 ! {print, self()}
+    end,
+    print(Pid1).
 
-    {ok, G_x, G_y, G_z} = read_gyro(I2C),
-    io:format("G_x, G_y, G_z: ~p, ~p, ~p ~n", [G_x, G_y, G_z]),
+timer_interupt(I2C, 0) ->
+    % timer:sleep(25),
+    AngleRoll_1 = angle_calculation(I2C, 0),
+    % {PWM, {Pre_Error, Pre_pre_Error}} = pid_calculation(0, 0, {0, 0}),
+    timer_interupt(I2C, AngleRoll_1);
+timer_interupt(I2C, AngleRoll) ->
+    Start = erlang:timestamp(),
+    receive
+        {print, From} -> From ! {mpu_value, AngleRoll}
+    after 25 ->
+        AngleRoll_1 = angle_calculation(I2C, AngleRoll),
+        TimeDiff = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        io:format("TimeDiff ~p~n", [TimeDiff]),
+        timer_interupt(I2C, AngleRoll_1)
+    end,
+    timer_interupt(I2C, AngleRoll).
 
-    GForcex = (id(A_x) - id(?Ax_off))*id(?GForce_Inv),
+
+% angle_calculation(I2C, _) ->
+%     {ok, A_x, A_y, A_z} = read_acc(I2C),
+
+%     {ok, G_x, G_y, G_z} = read_gyro(I2C),
+
+%     GForcex = (id(A_x) - id(?Ax_off))*id(?GForce_Inv),
+%     GForcey = (id(A_y) - id(?Ay_off))*id(?GForce_Inv),
+%     GForcez = (id(A_z) - id(?Az_off))*id(?GForce_Inv),
+
+%     RotX = (id(G_x) - id(?Gx_off))*id(?RotX_Inv),
+%     RotY = (id(G_y) - id(?Gy_off))*id(?RotX_Inv),
+%     RotZ = (id(G_z) - id(?Gz_off))*id(?RotX_Inv),
+%     ok.
+
+angle_calculation(I2C, AngleRoll) ->
+    {ok, _A_x, A_y, A_z} = read_acc(I2C),
+    % io:format("A_y, A_z: ~p, ~p ~n", [A_y,A_z]),
+
+    {ok, G_x, _G_y, _G_z} = read_gyro(I2C),
+    % io:format("G_x: ~p ~n", [G_x]),
+
     GForcey = (id(A_y) - id(?Ay_off))*id(?GForce_Inv),
     GForcez = (id(A_z) - id(?Az_off))*id(?GForce_Inv),
-    io:format("GForcex, GForcey, GForcez: ~p, ~p, ~p ~n", [GForcex, GForcey, GForcez]),
+    % io:format("GForcey, GForcez: ~p, ~p ~n", [GForcey, GForcez]),
 
     RotX = (id(G_x) - id(?Gx_off))*id(?RotX_Inv),
-    RotY = (id(G_y) - id(?Gy_off))*id(?RotX_Inv),
-    RotZ = (id(G_z) - id(?Gz_off))*id(?RotX_Inv),
-    io:format("RotX, RotY, RotZ: ~p, ~p, ~p ~n", [RotX, RotY, RotZ]),
-    ok.
+    % io:format("RotX: ~p ~n", [RotX]),
+    Roll = math:atan2(id(GForcey), id(GForcez)),
+    % io:format("Roll: ~p ~n", [Roll]),
+    Roll1 = id(Roll) * id(57.29577),
+    io:format("Roll1: ~p ~n", [Roll1]),
+    Roll1.
+    % AngleRollNew = id(0.988)*(id(AngleRoll)  + id(RotX)*id(?Interval_Calib)) + id(0.012)*id(Roll1),
+    % io:format("AngleRollNew: ~p ~n", [AngleRollNew]),
+    % AngleRollNew.
+
+% angle_calculation(_I2C, AngleRoll) -> ok.
 
 % === Read acceleromter data ===
 read_acc(I2C) ->
