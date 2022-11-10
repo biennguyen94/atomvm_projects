@@ -196,6 +196,7 @@ to_morse(C) ->
         $Z -> "--..   "
     end.
 
+%%%%%%%%%%button%%%%%%%%%%
 
 %     Body = [<<"  <body>
 %     <h1>ESP32-CAM Robot</h1>
@@ -213,3 +214,25 @@ to_morse(C) ->
 %    window.onload = document.getElementById(\"photo\").src = window.location.href.slice(0, -1) + \":81/stream\";
 %   </script>
 %   </body>">>],
+
+
+
+
+%%%%%%%%%%range slider%%%%%%%%%%
+% Body = <<"<html>
+%             <body>
+%                 <h1>Morse Encoder</h1>
+%                 <p><span id=\"textSliderValue\">%SLIDERVALUE%</span></p>
+%                 <p><input type=\"range\" onchange=\"updateSliderPWM(this)\" id=\"pwmSlider\" min=\"0\" max=\"1023\" value=\"%SLIDERVALUE%\" step=\"1\" class=\"slider\"></p>
+%                 <script>
+%                 function updateSliderPWM(element) {
+%                 var sliderValue = document.getElementById(\"pwmSlider\").value;
+%                 document.getElementById(\"textSliderValue\").innerHTML = sliderValue;
+%                 console.log(sliderValue);
+%                 var xhr = new XMLHttpRequest();
+%                 xhr.open(\"GET\", \"/slider?value=\"+sliderValue, true);
+%                 xhr.send();
+%                 }
+%                 </script>
+%             </body>
+%          </html>">>,
