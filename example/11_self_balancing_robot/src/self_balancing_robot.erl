@@ -81,8 +81,8 @@
 -define(MOTOR_2_EN, ?LEDC_HS_CH1_GPIO).
 
 
--define(Interval, 25). %25ms
--define(Interval_Inv, 0.04). %1/25ms
+-define(Interval, 0.025). %25ms
+-define(Interval_Inv, 40). %1/25ms
 
 start() ->
     setup_pwm(),
@@ -137,7 +137,7 @@ setup_motor(MotorPinList) ->
     ).
 
 setup_mpu() ->
-    I2C = i2c:open([{scl_io_num, 15}, {sda_io_num, 4}, {i2c_clock_hz, 1000000}]),
+    I2C = i2c:open([{scl_io_num, 22}, {sda_io_num, 21}, {i2c_clock_hz, 1000000}]),
     do_setup_mpu(I2C),
     I2C.
 
@@ -150,25 +150,31 @@ do_setup_mpu(I2C) ->
 
 timer_interupt(I2C, PWM, {Pre_Error, Pre_pre_Error}) ->
     Start = erlang:timestamp(),
-    receive
-    after 50 ->
-        % TimeDiff1 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+    receive a -> ok
+    after 55 ->
+        TimeDiff1 = timestamp_util:delta_ms(erlang:timestamp(), Start),
         AngleRoll_1 = angle_calculation(I2C),
-        % TimeDiff2 = timestamp_util:delta_ms(erlang:timestamp(), Start),
-        % io:format("TimeDiff1 ~p~n", [TimeDiff1]),
-        % io:format("TimeDiff2 ~p~n", [TimeDiff2]),
+        TimeDiff2 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        io:format("TimeDiff1 ~p~n", [TimeDiff1]),
+        io:format("TimeDiff2 ~p~n", [TimeDiff2]),
+        TimeDiff3 = timestamp_util:delta_ms(erlang:timestamp(), Start),
         {PWM2, {Pre_Error_1, Pre_pre_Error_1}} =
             pid_calculation(PWM, AngleRoll_1, {Pre_Error, Pre_pre_Error}),
+        TimeDiff4 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        io:format("TimeDiff3 ~p~n", [TimeDiff3]),
+        io:format("TimeDiff4 ~p~n", [TimeDiff4]),
         timer_interupt(I2C, PWM2, {Pre_Error_1, Pre_pre_Error_1})
     end.
 
 
 move(motor1, PWM, 0) ->
+    io:format("motor1 low: ~p ~n", [PWM]),
     gpio:digital_write(?MOTOR_1_PIN_1, low),
     gpio:digital_write(?MOTOR_1_PIN_2, high),
     ok = ledc:set_duty(?LEDC_HS_MODE, ?LEDC_HS_CH0_CHANNEL, PWM),
     ok = ledc:update_duty(?LEDC_HS_MODE, ?LEDC_HS_CH0_CHANNEL);
 move(motor1, PWM, 1) ->
+    io:format("motor1 high: ~p ~n", [PWM]),
     gpio:digital_write(?MOTOR_1_PIN_1, high),
     gpio:digital_write(?MOTOR_1_PIN_2, low),
     ok = ledc:set_duty(?LEDC_HS_MODE, ?LEDC_HS_CH0_CHANNEL, PWM),
@@ -184,6 +190,7 @@ move(motor2, PWM, 1) ->
     ok = ledc:set_duty(?LEDC_HS_MODE, ?LEDC_HS_CH1_CHANNEL, PWM),
     ok = ledc:update_duty(?LEDC_HS_MODE, ?LEDC_HS_CH1_CHANNEL);
 move(stop_motor, _PWM, _Dir) ->
+    io:format("motor1 stop ~n", []),
     ok = ledc:set_duty(?LEDC_HS_MODE, ?LEDC_HS_CH0_CHANNEL, 0),
     ok = ledc:update_duty(?LEDC_HS_MODE, ?LEDC_HS_CH0_CHANNEL),
     ok = ledc:set_duty(?LEDC_HS_MODE, ?LEDC_HS_CH1_CHANNEL, 0),
@@ -191,17 +198,25 @@ move(stop_motor, _PWM, _Dir) ->
 
 pid_calculation(PrePWM, CurrentAngle, {Pre_Error, Pre_pre_Error}) when
      (CurrentAngle > -30 andalso CurrentAngle < -10)
-    or (CurrentAngle > CurrentAngle andalso CurrentAngle < 30) ->
-    Error = id(?Setpoint) - id(CurrentAngle),
+    or (CurrentAngle > 10 andalso CurrentAngle < 30) ->
+    io:format("PrePWM: ~p ~n", [PrePWM]),
+    io:format("CurrentAngle: ~p ~n", [CurrentAngle]),
+    io:format("Pre_Error, Pre_pre_Error: ~p, ~p ~n", [Pre_Error, Pre_pre_Error]),
+    Error = case CurrentAngle > 0 of
+            true -> id(5) - id(CurrentAngle);
+            false -> id(-2) - id(CurrentAngle)
+        end,
     P_part = id(?Kp1)*(id(Error) - id(Pre_Error)),
     I_part = id(0.5)*id(?Ki1)*id(?Interval)*(id(Error) + id(Pre_Error)),
     D_part= id(?Kd1)*id(?Interval_Inv)*(id(Error) - id(2)*id(Pre_Error)+ id(Pre_pre_Error)),
+    io:format("P_part, I_part, D_part: ~p, ~p, ~p ~n", [P_part, I_part, D_part]),
     PWM1 = id(PrePWM) + id(P_part) + id(I_part) + id(D_part),
-    PWM2 = if
+    PWM11 = if
         (PWM1 > ?MaxPID) -> ?MaxPID;
         (PWM1 < ?MaxPIDNeg) -> ?MaxPIDNeg;
         true -> PWM1
     end,
+    PWM2 = trunc(PWM11),
     if PWM2 == 0 ->
             move(stop_motor, undef, undef);
        PWM2 > 0 ->
@@ -244,8 +259,8 @@ setup_acc(I2C) ->
     i2c:end_transmission(I2C).
 
 
-parse_bin(<<_ValueX:16/integer-signed, ValueY:16/integer-signed,
+parse_bin(<<ValueX:16/integer-signed, ValueY:16/integer-signed,
     ValueZ:16/integer-signed>>) ->
-    {ok, undef, ValueY, ValueZ}.
+    {ok, ValueX, ValueY, ValueZ}.
 
 id(I) -> I.
