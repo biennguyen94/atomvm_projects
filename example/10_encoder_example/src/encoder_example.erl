@@ -1,7 +1,7 @@
 %
 % This file is part of AtomVM.
 %
-% Copyright 2022 Fred Dushin <fred@dushin.net>
+% Copyright 2022 Bien Nguyen <nguyennhubientdh94@gmail.com>
 %
 % Licensed under the Apache License, Version 2.0 (the "License");
 % you may not use this file except in compliance with the License.
