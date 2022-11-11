@@ -82,6 +82,7 @@
 
 
 -define(Interval, 25). %25ms
+-define(Interval_Inv, 0.04). %1/25ms
 
 start() ->
     setup_pwm(),
@@ -191,11 +192,11 @@ move(stop_motor, _PWM, _Dir) ->
 pid_calculation(PrePWM, CurrentAngle, {Pre_Error, Pre_pre_Error}) when
      (CurrentAngle > -30 andalso CurrentAngle < -10)
     or (CurrentAngle > CurrentAngle andalso CurrentAngle < 30) ->
-    Error = ?Setpoint - CurrentAngle,
-    P_part = ?Kp1*(Error - Pre_Error),
-    I_part = 0.5*?Ki1*?Interval*(Error + Pre_Error),
-    D_part= ?Kd1/?Interval*( Error - 2*Pre_Error+ Pre_pre_Error),
-    PWM1 = PrePWM + P_part + I_part + D_part,
+    Error = id(?Setpoint) - id(CurrentAngle),
+    P_part = id(?Kp1)*(id(Error) - id(Pre_Error)),
+    I_part = id(0.5)*id(?Ki1)*id(?Interval)*(id(Error) + id(Pre_Error)),
+    D_part= id(?Kd1)*id(?Interval_Inv)*(id(Error) - id(2)*id(Pre_Error)+ id(Pre_pre_Error)),
+    PWM1 = id(PrePWM) + id(P_part) + id(I_part) + id(D_part),
     PWM2 = if
         (PWM1 > ?MaxPID) -> ?MaxPID;
         (PWM1 < ?MaxPIDNeg) -> ?MaxPIDNeg;
