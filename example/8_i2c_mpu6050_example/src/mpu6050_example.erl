@@ -99,10 +99,12 @@ timer_interupt(I2C, AngleRoll) ->
     Start = erlang:timestamp(),
     receive
         {print, From} -> From ! {mpu_value, AngleRoll}
-    after 25 ->
+    after 50 ->
+        TimeDiff1 = timestamp_util:delta_ms(erlang:timestamp(), Start),
         AngleRoll_1 = angle_calculation(I2C, AngleRoll),
-        TimeDiff = timestamp_util:delta_ms(erlang:timestamp(), Start),
-        io:format("TimeDiff ~p~n", [TimeDiff]),
+        TimeDiff2 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        io:format("TimeDiff1 ~p~n", [TimeDiff1]),
+        io:format("TimeDiff2 ~p~n", [TimeDiff2]),
         timer_interupt(I2C, AngleRoll_1)
     end,
     timer_interupt(I2C, AngleRoll).
@@ -126,25 +128,38 @@ angle_calculation(I2C, AngleRoll) ->
     {ok, _A_x, A_y, A_z} = read_acc(I2C),
     % io:format("A_y, A_z: ~p, ~p ~n", [A_y,A_z]),
 
-    {ok, G_x, _G_y, _G_z} = read_gyro(I2C),
+    % {ok, G_x, _G_y, _G_z} = read_gyro(I2C),
     % io:format("G_x: ~p ~n", [G_x]),
 
     GForcey = (id(A_y) - id(?Ay_off))*id(?GForce_Inv),
     GForcez = (id(A_z) - id(?Az_off))*id(?GForce_Inv),
     % io:format("GForcey, GForcez: ~p, ~p ~n", [GForcey, GForcez]),
 
-    RotX = (id(G_x) - id(?Gx_off))*id(?RotX_Inv),
+    % RotX = (id(G_x) - id(?Gx_off))*id(?RotX_Inv),
     % io:format("RotX: ~p ~n", [RotX]),
+    % RotX2 = filter(rot, RotX),
+    % io:format("RotX2: ~p ~n", [RotX2]),
     Roll = math:atan2(id(GForcey), id(GForcez)),
     % io:format("Roll: ~p ~n", [Roll]),
     Roll1 = id(Roll) * id(57.29577),
-    io:format("Roll1: ~p ~n", [Roll1]),
-    Roll1.
-    % AngleRollNew = id(0.988)*(id(AngleRoll)  + id(RotX)*id(?Interval_Calib)) + id(0.012)*id(Roll1),
+    Roll2 = filter(roll, Roll1),
+    io:format("Roll2: ~p ~n", [Roll2]),
+    Roll2.
+    % AngleRollNew = id(0.988)*(id(AngleRoll)  + id(RotX2)*id(?Interval_Calib)) + id(0.012)*id(Roll2),
     % io:format("AngleRollNew: ~p ~n", [AngleRollNew]),
     % AngleRollNew.
 
 % angle_calculation(_I2C, AngleRoll) -> ok.
+
+filter(roll, Roll) when (Roll > -30 andalso Roll < -10)
+    or (Roll > 10 andalso Roll < 30) ->
+    Roll;
+filter(roll, _Roll) -> 0.
+
+% filter(rot, RotX) when (RotX > -100 andalso RotX < -20)
+%     or  (RotX > 20 andalso RotX < 100) -> RotX;
+% filter(rot, _RotX) -> 0.
+
 
 % === Read acceleromter data ===
 read_acc(I2C) ->
