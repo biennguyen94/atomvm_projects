@@ -87,7 +87,7 @@ start() ->
     setup_pwm(),
     setup_motor(),
     I2C = setup_mpu(),
-    spawn(fun() -> timer_interupt(I2C, 0, {0, 0}, 0) end).
+    timer_interupt(I2C, 0, {0, 0}).
 
 
 setup_pwm() ->
@@ -147,17 +147,20 @@ do_setup_mpu(I2C) ->
     i2c:end_transmission(I2C).
 
 
-timer_interupt(I2C, 0, {0, 0}, 0) ->
-    timer:sleep(25),
-    AngleRoll_1 = angle_calculation(I2C, 0),
-    {PWM, {Pre_Error, Pre_pre_Error}} = pid_calculation(0, 0, {0, 0}),
-    timer_interupt(I2C, PWM, {Pre_Error, Pre_pre_Error}, AngleRoll_1);
-timer_interupt(I2C, PWM, {Pre_Error, Pre_pre_Error}, AngleRoll) ->
-    timer:sleep(25),
-    AngleRoll_1 = angle_calculation(I2C, AngleRoll),
-    {PWM2, {Pre_Error_1, Pre_pre_Error_1}} =
-        pid_calculation(PWM, AngleRoll, {Pre_Error, Pre_pre_Error}),
-    timer_interupt(I2C, PWM2, {Pre_Error_1, Pre_pre_Error_1}, AngleRoll_1).
+timer_interupt(I2C, PWM, {Pre_Error, Pre_pre_Error}) ->
+    Start = erlang:timestamp(),
+    receive
+    after 50 ->
+        % TimeDiff1 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        AngleRoll_1 = angle_calculation(I2C),
+        % TimeDiff2 = timestamp_util:delta_ms(erlang:timestamp(), Start),
+        % io:format("TimeDiff1 ~p~n", [TimeDiff1]),
+        % io:format("TimeDiff2 ~p~n", [TimeDiff2]),
+        {PWM2, {Pre_Error_1, Pre_pre_Error_1}} =
+            pid_calculation(PWM, AngleRoll_1, {Pre_Error, Pre_pre_Error}),
+        timer_interupt(I2C, PWM2, {Pre_Error_1, Pre_pre_Error_1})
+    end.
+
 
 move(motor1, PWM, 0) ->
     gpio:digital_write(?MOTOR_1_PIN_1, low),
@@ -186,7 +189,8 @@ move(stop_motor, _PWM, _Dir) ->
     ok = ledc:update_duty(?LEDC_HS_MODE, ?LEDC_HS_CH1_CHANNEL).
 
 pid_calculation(PrePWM, CurrentAngle, {Pre_Error, Pre_pre_Error}) when
-    CurrentAngle > -30 andalso CurrentAngle < 30->
+     (CurrentAngle > -30 andalso CurrentAngle < -10)
+    or (CurrentAngle > CurrentAngle andalso CurrentAngle < 30) ->
     Error = ?Setpoint - CurrentAngle,
     P_part = ?Kp1*(Error - Pre_Error),
     I_part = 0.5*?Ki1*?Interval*(Error + Pre_Error),
@@ -213,14 +217,19 @@ pid_calculation(PrePWM, _CurrentAngle, {Pre_Error, Pre_pre_Error}) ->
      move(stop_motor, undef, undef),
      {PrePWM, {Pre_Error, Pre_pre_Error}}.
 
-angle_calculation(I2C, AngleRoll) ->
+angle_calculation(I2C) ->
     {ok, _A_x, A_y, A_z} = read_acc(I2C),
-    {ok, G_x, _G_y, _G_z} = read_gyro(I2C),
-    RotX = (G_x - ?Gx_off)*?RotX_Inv,
-    GForcey = (A_y - ?Ay_off)*?GForce_Inv,
-    GForcez = (A_z - ?Az_off)*?GForce_Inv,
-    Roll = math:atan2(GForcey, GForcez),
-    0.988*(AngleRoll  + RotX*?Interval) + 0.012*Roll.
+    GForcey = (id(A_y) - id(?Ay_off))*id(?GForce_Inv),
+    GForcez = (id(A_z) - id(?Az_off))*id(?GForce_Inv),
+    Roll = math:atan2(id(GForcey), id(GForcez)),
+    Roll1 = id(Roll) * id(57.29577),
+    Roll2 = filter(roll, Roll1),
+    Roll2.
+
+filter(roll, Roll) when (Roll > -30 andalso Roll < -10)
+    or (Roll > 10 andalso Roll < 30) ->
+    Roll;
+filter(roll, _Roll) -> 0.
 
 % === Read acceleromter data ===
 read_acc(I2C) ->
@@ -234,19 +243,8 @@ setup_acc(I2C) ->
     i2c:end_transmission(I2C).
 
 
-% === Read gyroscope data ===
-read_gyro(I2C) ->
-    setup_gyro(I2C),
-    Bin = i2c:read_bytes(I2C, ?MPU_addr, 6),
-    parse_bin(Bin).
+parse_bin(<<_ValueX:16/integer-signed, ValueY:16/integer-signed,
+    ValueZ:16/integer-signed>>) ->
+    {ok, undef, ValueY, ValueZ}.
 
-setup_gyro(I2C) ->
-    i2c:begin_transmission(I2C, ?MPU_addr),
-    i2c:write_byte(I2C, ?GYRO_XOUT_H),
-    i2c:end_transmission(I2C).
-
-parse_bin(B) ->
-    ValueX = (binary:at(B, 0) bsl 8) bor binary:at(B, 1),
-    ValueY = (binary:at(B, 2) bsl 8) bor binary:at(B, 3),
-    ValueZ = (binary:at(B, 4) bsl 8) bor binary:at(B, 5),
-    {ok, ValueX, ValueY, ValueZ}.
+id(I) -> I.
