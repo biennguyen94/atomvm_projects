@@ -34,6 +34,7 @@ make -j 8
 
 ## To create .img
 ```
+cd /tools/AtomVM/build
 ./tools/release/esp32/mkimage.sh
 ```
 
@@ -54,7 +55,7 @@ sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     -u --flash_mode dio --flash_freq 40m \
     --flash_size detect \
     0x1000 \
-    /tools/AtomVM/atomvm-esp32-0.5.0.img
+    /tools/AtomVM/src/platforms/esp32/build/atomvm-esp32-0.5.0.img
 ```
 Or this script can be used: `FLASH_OFFSET=0x1000 /tools/AtomVM/tools/dev/flash.sh /tools/AtomVM/atomvm-esp32-0.5.0.img`
 

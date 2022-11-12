@@ -19,7 +19,7 @@ RUN apt-get -qq install wget make libncurses-dev flex bison gperf \
     python-future python-pyparsing python-pyelftools
 
 # Install erlang OTP 21.0
-RUN apt-get install libwxbase3.0-0v5 libwxgtk3.0-0v5 libsctp1 -y
+RUN apt-get -qq update && apt-get install libwxbase3.0-0v5 libwxgtk3.0-0v5 libsctp1 -y
 RUN wget https://packages.erlang-solutions.com/erlang/debian/pool/esl-erlang_21.0-1~ubuntu~bionic_amd64.deb &&\
     dpkg -i esl-erlang_21.0-1~ubuntu~bionic_amd64.deb &&\
     wget https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc &&\
