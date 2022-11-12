@@ -19,3 +19,27 @@ docker exec -it bien_atomvm bash
 docker tag bien_atomvm.test biennguyen94/atomvm:v1
 docker push biennguyen94/atomvm:v1
 ```
+
+# Docker eats disk space
+```
+check folder /var.lab/docker:
+sudo -s
+df -h
+du -sh <folder_name>
+```
+
+# Clean docker
+## Container
+```
+docker rm <NAMES>
+docker ps --filter status=exited -q | xargs docker rm
+
+```
+## Image
+```
+docker image rm <IMAGE ID>
+```
+remove <none> image:
+```
+docker rmi $(docker images -f dangling=true -q )
+```

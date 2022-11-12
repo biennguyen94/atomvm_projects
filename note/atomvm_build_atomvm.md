@@ -25,11 +25,19 @@ make
 ```
 
 # Build for ESP32
-## To build esp32 platform
+## To build esp32 platform (does not work for esp-idf 4.4 and later, see Docker file of Ubuntu 20.04)
 ```
 cd /tools/AtomVM/src/platforms/esp32
 make menuconfig (then just press E)
 make -j 8
+```
+
+## To build esp32 for esp-idf 4.4 and later
+```
+cd /tools/AtomVM/src/platforms/esp32
+. $IDF_PATH/export.sh
+python3 $IDF_PATH/tools/idf.py reconfigure
+python3 $IDF_PATH/tools/idf.py build
 ```
 
 ## To create .img
