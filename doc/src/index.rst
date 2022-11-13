@@ -28,6 +28,7 @@ AtomVM includes many advanced features, including process spawning, monitoring, 
    atomvm_plan_for_peripherals_checking
    atomvm_useful_apt_check
    atomvm_why_erlang_in_IoT
+   atomvm_doc_generation
 
 
 Indices and tables
