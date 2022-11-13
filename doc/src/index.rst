@@ -15,27 +15,19 @@ AtomVM includes many advanced features, including process spawning, monitoring, 
 
 .. warning::  AtomVM is currently in Alpha status.  Software may contain bugs and should not be used for mission-critical applications.  Application Programming Interfaces may change without warning.
 
-[`PDF <pdf/atomvm.pdf>`_][`EPUB <epub/AtomVM.epub>`_]
+.. [`PDF <pdf/atomvm.pdf>`_][`EPUB <epub/AtomVM.epub>`_]
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-   welcome-to-atomvm
-   getting-started-guide
-   programmers-guide
-   example-programs
-   network-programming-guide
-   build-instructions
-   atomvm-internals
-   memory-management
-   packbeam-format
-   api-reference-documentation
-
-.. toctree::
-   :hidden:
-
-   CONTRIBUTING.md
+   atomvm_overview
+   atomvm_init_env_setup
+   atomvm_build_atomvm
+   atomvm_build_and_flash_from_docker
+   atomvm_plan_for_peripherals_checking
+   atomvm_useful_apt_check
+   atomvm_why_erlang_in_IoT
 
 
 Indices and tables
