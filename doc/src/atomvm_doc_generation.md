@@ -15,3 +15,18 @@ cd build
 cmake ..
 make sphinx-html
 ```
+
+## Upload html to webserver
+```
+apt install screen
+apt install vim
+cd /tools/atomvm_basic_projects/build/doc/html/
+screen -d -m python3 -m http.server 7777
+top -n 1 | pgrep screen
+kill -9 `top -n 1 | pgrep screen`
+```
+
+## To use local html folder instead of container
+```
+docker run --name bien_atomvm --net host -it --mount src="$(pwd)",target=/atomvm_doc,type=bind biennguyen94/atomvm:ubuntu20_04_v1
+```
