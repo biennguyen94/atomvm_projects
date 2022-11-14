@@ -37,7 +37,6 @@ RUN git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git r
 ENV PATH $PATH:/root/.cache/rebar3/bin
 
 # ESP 32
-
 # Work in esp directory
 WORKDIR /tools/esp
 
@@ -63,9 +62,16 @@ RUN git clone https://github.com/atomvm/AtomVM
 
 # Build esp32 platform
 WORKDIR /tools/AtomVM/src/platforms/esp32
-RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py reconfigure && python3 $IDF_PATH/tools/idf.py build
+RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py reconfigure &&\
+    python3 $IDF_PATH/tools/idf.py build
 
 # Get back to root directory
 WORKDIR /root
+
+# Install sphinx & sphinx's dependencies
+RUN python3 -m pip install sphinx &&\
+    python3 -m pip install myst-parser &&\
+    python3 -m pip install sphinx-rtd-theme
+RUN apt-get install screen vim -y
 
 CMD /bin/bash

@@ -23,7 +23,7 @@ docker push biennguyen94/atomvm:v1
 
 ## Docker eats disk space
 ```
-check folder /var.lab/docker:
+check folder /var/lib/docker:
 sudo -s
 df -h
 du -sh <folder_name>
