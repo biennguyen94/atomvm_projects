@@ -19,7 +19,7 @@ rebar3 packbeam
 
 ## Load .avm
 ```
-${IDF_PATH}/components/esptool_py/esptool/esptool.py \
+python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
     --port /dev/ttyUSB0 \
     --baud 115200 \
@@ -29,7 +29,7 @@ ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     -u --flash_mode dio --flash_freq 40m \
     --flash_size detect \
     0x210000 \
-    /tools/atomvm_basic_projects/example/2_blinky/_build/default/lib/blinky.avm
+    _build/default/lib/blinky.avm
 ```
 
 Open minicom:

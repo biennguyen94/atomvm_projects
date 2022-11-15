@@ -26,14 +26,14 @@ make
 ```
 
 ## Build for ESP32
-### To build esp32 platform (does not work for esp-idf 4.4 and later, see Docker file of Ubuntu 20.04)
+### To build esp32 platform (ubuntu 18.04) (does not work for esp-idf 4.4 and later, see Docker file of Ubuntu 20.04)
 ```
 cd /tools/AtomVM/src/platforms/esp32
 make menuconfig (then just press E)
 make -j 8
 ```
 
-### To build esp32 for esp-idf 4.4 and later
+### To build esp32 for esp-idf 4.4 and later (ubuntu 20.04)
 ```
 cd /tools/AtomVM/src/platforms/esp32
 . $IDF_PATH/export.sh
@@ -48,11 +48,31 @@ cd /tools/AtomVM/build
 ```
 
 ### To erase the flash
+For ubuntu 20.04:
+```
+sudo python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
+```
+For ubuntu 18.04:
 ```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
 ```
 
 ### To flash the entire image to device
+For ubuntu 20.04:
+```
+sudo python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
+    --chip esp32 \
+    --port /dev/ttyUSB0 \
+    --baud 115200 \
+    --before default_reset \
+    --after hard_reset \
+    write_flash \
+    -u --flash_mode dio --flash_freq 40m \
+    --flash_size detect \
+    0x1000 \
+    /tools/AtomVM/src/platforms/esp32/build/atomvm-esp32-0.5.0.img
+```
+For ubuntu 18.04:
 ```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
@@ -75,6 +95,21 @@ rebar3 packbeam
 ```
 
 ### To flash own application
+For ubuntu 20.04:
+```
+sudo python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
+    --chip esp32 \
+    --port /dev/ttyUSB0 \
+    --baud 115200 \
+    --before default_reset \
+    --after hard_reset \
+    write_flash \
+    -u --flash_mode dio --flash_freq 40m \
+    --flash_size detect \
+    0x210000 \
+    /tools/atomvm_examples/erlang/blinky/_build/default/lib/blinky.avm
+```
+For ubuntu 18.04:
 ```
 sudo ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \

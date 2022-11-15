@@ -71,7 +71,7 @@ sudo apt-get -qq install wget make libncurses-dev flex bison gperf \
     python-future python-pyparsing python-pyelftools
 ```
 
-## esp-idf
+## esp-idf (ubuntu 18.04 only)
 ```
 cd /tools/esp
 git clone -b v3.2 --recursive https://github.com/espressif/esp-idf.git esp-idf
