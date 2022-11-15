@@ -19,3 +19,4 @@
 | `sr05`  | ❌ |
 | `mpu6050`  | ✅ |
 | `balancing robot PID`  | ❌ |
+| `remote robot controlled by web server`  | ✅ |
