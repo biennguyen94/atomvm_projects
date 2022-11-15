@@ -17,7 +17,7 @@ RUN apt-get install zlib1g-dev libssl-dev -y
 RUN apt-get install minicom -y
 
 # Install esp-idf deps
-RUN apt-get install git wget flex bison gperf python3 python3-pip python3-venv python3-setuptools cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 -y
+RUN apt-get install git wget flex bison gperf python3 python3-pip python3-venv python3-setuptools python3-serial cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 -y
 
 # Install erlang OTP 21.0
 RUN apt-get install libncurses5  libsctp1 libwxbase3.0-0v5 libwxgtk3.0-gtk3-0v5 libssl1.1 gnupg -y
