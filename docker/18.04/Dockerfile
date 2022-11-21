@@ -14,7 +14,7 @@ RUN apt-get install zlib1g-dev libssl-dev -y
 RUN apt-get install minicom -y
 
 # Install esp-idf deps
-RUN apt-get -qq install wget make libncurses-dev flex bison gperf \
+RUN apt-get -qq update && apt-get -qq install wget make libncurses-dev flex bison gperf \
     python python-pip python-setuptools python-serial python-cryptography \
     python-future python-pyparsing python-pyelftools
 
