@@ -62,7 +62,7 @@ RUN git clone -b v3.2 --recursive https://github.com/espressif/esp-idf.git esp-i
 WORKDIR /tools
 
 # Build AtomVm
-RUN git clone https://github.com/atomvm/AtomVM
+RUN git clone -b release-0.5 https://github.com/atomvm/AtomVM
 
 
 # Get back to root directory
