@@ -58,7 +58,8 @@ RUN $IDF_PATH/install.sh esp32
 WORKDIR /tools
 
 # Build AtomVm
-RUN git clone https://github.com/atomvm/AtomVM
+RUN git clone https://github.com/atomvm/AtomVM &&\
+    git checkout 3d7447965d72ce603914e21307563b8cfbb86fef
 
 # Build esp32 platform
 WORKDIR /tools/AtomVM/src/platforms/esp32
