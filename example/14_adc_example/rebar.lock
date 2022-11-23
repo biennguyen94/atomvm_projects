@@ -1,4 +1,0 @@
-[{<<"atomvm_adc">>,
-  {git,"https://github.com/atomvm/atomvm_adc.git",
-       {ref,"1cf2d30e55edde2b205d52643f04419512d23073"}},
-  0}].
