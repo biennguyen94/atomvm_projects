@@ -134,6 +134,10 @@ handle_call(init, _From, _S) ->
 handle_call({send, _Msg}, _From, S=#state{spi=SPI, row=#row{row1=Row1}, gpio=GPIO}) ->
     {reply, ok, S};
 
+handle_call({update_set_led, Msg}, _From, State) ->
+
+    {reply, ok, State};
+
 handle_call(Call, _From, State) ->
     erlang:display(Call),
     {reply, ok, State}.
@@ -145,28 +149,51 @@ terminate(_Reason, _State) ->
     ok.
 
 
-% calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, Row, SPI) ->
-%     {SnakeRow1, SnakeCol1} = case SnakeDirection of
-%         1 ->
-%             NewSnakeRow = SnakeRow-1,
-%             set_led(SPI, get_row(Row, NewSnakeRow), NewSnakeRow, SnakeCol, 1),
-%             {NewSnakeRow, SnakeCol};
-%         2 ->
-%             NewSnakeCol = SnakeCol+1,
-%             set_led(SPI, get_row(Row, SnakeRow), SnakeRow, NewSnakeCol, 1),
-%             {SnakeRow, NewSnakeCol};
-%         3 ->
-%             NewSnakeRow = SnakeRow+1,
-%             set_led(SPI, get_row(Row, NewSnakeRow), NewSnakeRow, SnakeCol, 1),
-%             {NewSnakeRow, SnakeCol};
-%         4 ->
-%             NewSnakeCol = SnakeCol-1,
-%             set_led(SPI, get_row(Row, SnakeRow), SnakeRow, NewSnakeCol, 1),
-%             {SnakeRow, NewSnakeCol};
-%         _ ->
-%             {-1, -1}
-%     end,
+calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, Row, SPI) ->
+    {SnakeRow1, SnakeCol1} = case SnakeDirection of
+        1 ->
+            NewSnakeRow = SnakeRow-1,
+            set_led(SPI, get_row(Row, NewSnakeRow), NewSnakeRow, SnakeCol, 1),
+            {NewSnakeRow, SnakeCol};
+        2 ->
+            NewSnakeCol = SnakeCol+1,
+            set_led(SPI, get_row(Row, SnakeRow), SnakeRow, NewSnakeCol, 1),
+            {SnakeRow, NewSnakeCol};
+        3 ->
+            NewSnakeRow = SnakeRow+1,
+            set_led(SPI, get_row(Row, NewSnakeRow), NewSnakeRow, SnakeCol, 1),
+            {NewSnakeRow, SnakeCol};
+        4 ->
+            NewSnakeCol = SnakeCol-1,
+            set_led(SPI, get_row(Row, SnakeRow), SnakeRow, NewSnakeCol, 1),
+            {SnakeRow, NewSnakeCol};
+        _ ->
+            {-1, -1}
+    end,
+    GameBoard1 = update_game_board(GameBoard, SnakeRow1, SnakeCol1, ?InitialSnakeLength + 1),
 
+    GameBoard2 = lists:map(fun(A)->
+        case A > 0 of
+            true ->
+                %TODO: redefine GameBoard in general to [{1, value1},{2, value2}, ..]
+                %TODO: write new array_mapping_inv to map A (GameBoard as above format) to {Row, Col}
+                {RowMap, ColMap} = array_mapping_inv(A),
+                RowRec = set_led(SPI, get_row(Row, RowMap), RowMap, ColMap, 1),
+                gen_server:call(P, {update_set_led, RowRec}),
+                A - 1;
+            _ ->
+                %TODO: redefine GameBoard in general to [{1, value1},{2, value2}, ..]
+                %TODO: write new array_mapping_inv to map A (GameBoard as above format) to {Row, Col}
+                {RowMap, ColMap} = array_mapping_inv(A),
+                RowRec = set_led(SPI, get_row(Row, RowMap), RowMap, ColMap, 0),
+                gen_server:call(P, {update_set_led, RowRec}),
+                A
+        end
+    end, GameBoard1).
+
+update_game_board(GameBoard, Row, Col, Value) ->
+    Index = array_mapping(Row, Col),
+    lists:sublist(GameBoard, Index-1) ++ [Value] ++ lists:nthtail(Index,GameBoard).
 
 generate_food(GameBoard) ->
     FoodRow = random(8),
@@ -180,6 +207,7 @@ generate_food(GameBoard, GameBoardRes, _) when GameBoardRes > 0 ->
 generate_food(_GameBoard, _GameBoardRes, {FoodRow, FoodCol}) ->
     {FoodRow, FoodCol}.
 
+%TODO: revise set_led to return #row
 set_led(SPI, Status, Row, Col, Value) when Value == 1 ->
     X = Status bor (16#80 bsr (Col-1)),
     io:format("XXXXXXXX : ~p~n", [X]),
