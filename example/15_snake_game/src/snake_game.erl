@@ -72,7 +72,8 @@ start() ->
     [{ADC_X, ADC_Y}, GameBoard, SPI, {SnakeRow, SnakeCol}]  = gen_server:call(P, init),
     loop(P, #main{adc={ADC_X, ADC_Y}, game_board=GameBoard, spi=SPI, row=#row{}, snake_position = {SnakeRow, SnakeCol}}).
 
-loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = _PrevSnakeDirection, food_position ={FoodRow1, FoodCol1}, snake_length = SnakeLength, snake_position = {SnakeRow, SnakeCol}}) ->
+loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = _PrevSnakeDirection,
+		food_position ={FoodRow1, FoodCol1}, snake_length = SnakeLength, snake_position = {SnakeRow, SnakeCol}}) ->
     io:format("Loop start~n"),
 
     Row  = gen_server:call(P, get_raw_status),
@@ -81,18 +82,19 @@ loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_di
     {FoodRow, FoodCol} = generate_food(GameBoard, {FoodRow1, FoodCol1}),
     io:format("FoodRow, FoodCol : ~p, ~p~n", [FoodRow, FoodCol]),
 
-    % note: #raw is updated by calculate_snake
     [NewRow, SnakeDirection] = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
     io:format("SnakeDirection test : ~p~n", [SnakeDirection]),
 
-    [{NewFoodRow, NewFoodCol}, SnakeLengthNew, GameBoard2] = calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, NewRow, GameBoard, SPI, P, {FoodRow, FoodCol}, SnakeLength),
+    [{NewFoodRow, NewFoodCol}, SnakeLengthNew, GameBoard2, {NewSnakeRow, NewSnakeCol}] =
+        calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, NewRow, GameBoard, SPI, P, {FoodRow, FoodCol}, SnakeLength),
     io:format(" SnakeLengthNew test : ~p~n", [SnakeLengthNew]),
 
     %TODO: add handleGameStates function (win/gameOver), and restart all variables
 
     io:format("Loop end~n"),
 
-    loop(P, S#main{previous_direction = SnakeDirection, game_board=GameBoard2, food_position = {NewFoodRow, NewFoodCol}, snake_length = SnakeLengthNew}).% note: #raw is updated by calculate_snake
+    loop(P, S#main{previous_direction = SnakeDirection, game_board=GameBoard2, food_position = {NewFoodRow, NewFoodCol},
+		   snake_length = SnakeLengthNew, snake_position = {NewSnakeRow, NewSnakeCol}}).
 
 init(_) ->
     {ok, []}.
@@ -115,7 +117,8 @@ handle_call(init, _From, _S) ->
     SnakeCol = random(8),
 
     io:format("Init end~n"),
-    {reply, [{ADC_X, ADC_Y}, GameBoard, SPI, {SnakeRow, SnakeCol}], #state{spi=SPI, adc={ADC_X, ADC_Y}, row = #row{}, gpio=GPIO}};
+    {reply, [{ADC_X, ADC_Y}, GameBoard, SPI, {SnakeRow, SnakeCol}], #state{spi=SPI, adc={ADC_X, ADC_Y},
+									   row = #row{}, gpio=GPIO}};
 
 handle_call({send, _Msg}, _From, S=#state{spi=_SPI, row=#row{row1=_Row1}, gpio=_GPIO}) ->
     {reply, ok, S};
@@ -123,7 +126,8 @@ handle_call({send, _Msg}, _From, S=#state{spi=_SPI, row=#row{row1=_Row1}, gpio=_
 handle_call(get_raw_status, _From, S=#state{row=Row}) ->
     {reply, Row, S};
 
-handle_call({scan_joystick, [FoodRow, FoodCol]}, _From, State=#state{adc={ADC_X, ADC_Y}, spi=SPI, row = Row}) ->
+handle_call({scan_joystick, [FoodRow, FoodCol]}, _From, State=#state{adc={ADC_X, ADC_Y},
+								     spi=SPI, row = Row}) ->
     timer:sleep(500),
     NewRow = set_led(SPI, Row, FoodRow, FoodCol, 1),
 
@@ -213,7 +217,7 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, RowRec, GameBoard, SPI, P,
                 {{RowMap, ColMap}, Value}
         end
     end, GameBoard1),
-    [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard2].
+    [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard2, {SnakeRowRes, SnakeColRes}].
 
 fix_edge(SnakeRow, SnakeCol) when SnakeRow < 0 orelse SnakeRow > 7 ->
     case SnakeRow < 0 of
@@ -285,16 +289,16 @@ get_row_status(#row{row7 = Row7}, 7) -> Row7;
 get_row_status(#row{row8 = Row8}, 8) -> Row8.
 
 
-blink_food(SPI, Row, FoodRow, FoodCol, SetLedRes, 0) -> SetLedRes;
-blink_food(SPI, Row, FoodRow, FoodCol, _SetLedRes, Counter) ->
-    SetLedRes = case choose(atomvm:random() rem 100 < 50, 1, 0) of
-        1 ->
-            set_led(SPI, Row, FoodRow, FoodCol, 1);
-        0 ->
-            set_led(SPI, Row, FoodRow, FoodCol, 0)
-    end,
-    timer:sleep(500),
-    blink_food(SPI, Row, FoodRow, FoodCol, SetLedRes, Counter-1).
+%blink_food(SPI, Row, FoodRow, FoodCol, SetLedRes, 0) -> SetLedRes;
+%blink_food(SPI, Row, FoodRow, FoodCol, _SetLedRes, Counter) ->
+%    SetLedRes = case choose(atomvm:random() rem 100 < 50, 1, 0) of
+%        1 ->
+%            set_led(SPI, Row, FoodRow, FoodCol, 1);
+%        0 ->
+%            set_led(SPI, Row, FoodRow, FoodCol, 0)
+%    end,
+%    timer:sleep(500),
+%    blink_food(SPI, Row, FoodRow, FoodCol, SetLedRes, Counter-1).
 
 random(N) ->
     {MegaSecs, Secs, MicroSecs} = erlang:timestamp(),
@@ -341,8 +345,8 @@ do_scan_joystick(ADC_X, ADC_Y, {_FoodRow, _FoodCol}, _SPI, _PrevSnakeDirection) 
     %     end.
 
 
-choose(true,  True, _)  -> True;
-choose(false, _, False) -> False.
+%choose(true,  True, _)  -> True;
+%choose(false, _, False) -> False.
 
 setup_adc() ->
     JoystickX = 34,
@@ -388,7 +392,7 @@ show_message(N, SPI, GPIO, M) ->
     write_register(SPI, 16#08, 16#42 bsr M, GPIO),
     show_message(N, SPI, GPIO, M+1).
 
-show_message1(N, SPI, GPIO, 9) ->
+show_message1(_N, _SPI, _GPIO, 9) ->
     % show_message1(N, SPI, GPIO, 0);
     ok;
 show_message1(N, SPI, GPIO, M) ->
@@ -404,10 +408,10 @@ show_message1(N, SPI, GPIO, M) ->
     show_message1(N, SPI, GPIO, M+1).
 
 
-read_register(SPI, Address) ->
-    spi:read_at(SPI, Address, 8).
+%read_register(SPI, Address) ->
+%    spi:read_at(SPI, Address, 8).
 
-write_register(SPI, Address, Data, GPIO) ->
+write_register(SPI, Address, Data, _GPIO) ->
     % gpio:set_level(GPIO, 18, 0),
     spi:write_at(SPI, Address, 8, Data).
     % gpio:set_level(GPIO, 18, 1).
