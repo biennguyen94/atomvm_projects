@@ -71,7 +71,7 @@ start() ->
     [{ADC_X, ADC_Y}, GameBoard, SPI, {SnakeRow, SnakeCol}]  = gen_server:call(P, init),
     loop(P, #main{adc={ADC_X, ADC_Y}, game_board=GameBoard, spi=SPI, snake_position = {SnakeRow, SnakeCol}}).
 
-loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = _PrevSnakeDirection,
+loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = PrevSnakeDirection,
 		food_position ={FoodRow1, FoodCol1}, snake_length = SnakeLength, snake_position = {SnakeRow, SnakeCol}}) ->
     io:format("Loop start~n"),
 
@@ -81,12 +81,13 @@ loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_di
     {FoodRow, FoodCol} = generate_food(GameBoard, {FoodRow1, FoodCol1}),
     io:format("FoodRow, FoodCol : ~p, ~p~n", [FoodRow, FoodCol]),
 
-    SnakeDirection = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
-    io:format("SnakeDirection test : ~p~n", [SnakeDirection]),
+    SnakeDirection1 = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
+    SnakeDirection = choose(SnakeDirection1 /=0, SnakeDirection1, PrevSnakeDirection),
+    io:format("PrevSnakeDirection, SnakeDirection1, SnakeDirection: ~p, ~p, ~p~n",[PrevSnakeDirection, SnakeDirection1, SnakeDirection]),
 
     [{NewFoodRow, NewFoodCol}, SnakeLengthNew, GameBoard2, {NewSnakeRow, NewSnakeCol}] =
-        calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, SPI, P, {FoodRow, FoodCol}, SnakeLength),
-    io:format(" SnakeLengthNew test : ~p~n", [SnakeLengthNew]),
+        calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, FoodCol}, SnakeLength),
+    io:format("SnakeLengthNew test : ~p~n", [SnakeLengthNew]),
 
     %TODO: add handleGameStates function (win/gameOver), and restart all variables
 
@@ -147,11 +148,14 @@ terminate(_Reason, _State) ->
     ok.
 
 
-calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, _SPI, P, {FoodRow, FoodCol}, SnakeLength) ->
+calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, FoodCol}, SnakeLength) ->
+    io:format("fix_edge start~n"),
     {SnakeRowRes, SnakeColRes} = case SnakeDirection of
         1 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
+    io:format("fix_edge start 1, SnakeRow, SnakeCol:  ~p, ~p~n", [SnakeRow, SnakeCol]),
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow-1, SnakeCol),
+    io:format("fix_edge stop 2~n"),
             gen_server:call(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
             {SnakeRow1, SnakeCol1};
         2 ->
@@ -172,6 +176,7 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, _SPI, P, {FoodR
         _ ->
             {SnakeRow, SnakeCol}
     end,
+    io:format("fix_edge stop~n"),
     % TODO: if there is a snake body segment, this will cause the end of the game (snake must be moving)
     % GameBoardRes = game_board(SnakeRowRes, SnakeColRes, GameBoard),
     % case GameBoardRes>1 of
@@ -215,8 +220,8 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, _SPI, P, {FoodR
     end, GameBoard1),
     [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard2, {SnakeRowRes, SnakeColRes}].
 
-fix_edge(SnakeRow, SnakeCol) when SnakeRow < 0 orelse SnakeRow > 7 ->
-    case SnakeRow < 0 of
+fix_edge(SnakeRow, SnakeCol) when SnakeRow < 1 orelse SnakeRow > 8 ->
+    case SnakeRow < 1 of
         true -> fix_edge2(SnakeRow+8, SnakeCol);
         _ -> fix_edge2(SnakeRow-8, SnakeCol)
     end;
@@ -224,8 +229,8 @@ fix_edge(SnakeRow, SnakeCol) ->
     fix_edge2(SnakeRow, SnakeCol).
 
 
-fix_edge2(SnakeRow, SnakeCol) when SnakeCol < 0 orelse SnakeCol > 7 ->
-    case SnakeCol < 0 of
+fix_edge2(SnakeRow, SnakeCol) when SnakeCol < 1 orelse SnakeCol > 8 ->
+    case SnakeCol < 1 of
         true -> [SnakeRow, SnakeCol+8];
         _ -> [SnakeRow, SnakeCol-8]
     end;
@@ -341,8 +346,8 @@ do_scan_joystick(ADC_X, ADC_Y, {_FoodRow, _FoodCol}, _SPI, _PrevSnakeDirection) 
     %     end.
 
 
-%choose(true,  True, _)  -> True;
-%choose(false, _, False) -> False.
+choose(true,  True, _)  -> True;
+choose(false, _, False) -> False.
 
 setup_adc() ->
     JoystickX = 34,
@@ -353,6 +358,15 @@ setup_adc() ->
 
 
 init_matrix_led(GPIO, SPISettings) ->
+    SPI = spi:open(SPISettings),
+    write_register(SPI, 16#0C, 16#01, GPIO),
+    write_register(SPI, 16#0B, 16#07, GPIO),
+    write_register(SPI, 16#0A, 16#00, GPIO),
+    write_register(SPI, 16#09, 16#00, GPIO),
+    write_register(SPI, 16#0F, 16#00, GPIO),
+    {ok, SPI}.
+
+init_matrix_led_test(GPIO, SPISettings) ->
     SPI = spi:open(SPISettings),
     write_register(SPI, 16#0C, 16#01, GPIO),
     write_register(SPI, 16#0B, 16#07, GPIO),
