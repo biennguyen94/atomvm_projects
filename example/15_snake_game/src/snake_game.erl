@@ -20,7 +20,7 @@
 
 -module(snake_game).
 -export([start/0]).
--export([init/1, handle_call/3, handle_info/2, terminate/2]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2]).
 
 -record(state, {spi="",
     row,
@@ -71,17 +71,32 @@ start() ->
     [{ADC_X, ADC_Y}, GameBoard, SPI, {SnakeRow, SnakeCol}]  = gen_server:call(P, init),
     loop(P, #main{adc={ADC_X, ADC_Y}, game_board=GameBoard, spi=SPI, snake_position = {SnakeRow, SnakeCol}}).
 
-loop(P, S=#main{adc={_ADC_X, _ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = PrevSnakeDirection,
+loop(P, S=#main{adc={ADC_X, ADC_Y}, game_board=GameBoard, spi=SPI, previous_direction = PrevSnakeDirection,
 		food_position ={FoodRow1, FoodCol1}, snake_length = SnakeLength, snake_position = {SnakeRow, SnakeCol}}) ->
     io:format("Loop start~n"),
 
-    Row  = gen_server:call(P, get_raw_status),
-    io:format("Raw test : ~p~n", [Row]),
+    % Row  = gen_server:call(P, get_raw_status),
+    % io:format("Raw test : ~p~n", [Row]),
 
     {FoodRow, FoodCol} = generate_food(GameBoard, {FoodRow1, FoodCol1}),
     io:format("FoodRow, FoodCol : ~p, ~p~n", [FoodRow, FoodCol]),
 
-    SnakeDirection1 = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
+
+
+    io:format("set_led 1 start~n"),
+    timer:sleep(1000),
+    % gen_server:cast(P, {set_led, {FoodRow, FoodCol}, 1}),
+    P ! {set_led1, {FoodRow, FoodCol}, 1},
+    io:format("set_led 1 stop~n"),
+
+    io:format("scan_joystick start~n"),
+    SnakeDirection1 = do_scan_joystick(ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything),
+    io:format("scan_joystick stop~n"),
+
+
+
+
+    % SnakeDirection1 = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
     SnakeDirection = choose(SnakeDirection1 /=0, SnakeDirection1, PrevSnakeDirection),
     io:format("PrevSnakeDirection, SnakeDirection1, SnakeDirection: ~p, ~p, ~p~n",[PrevSnakeDirection, SnakeDirection1, SnakeDirection]),
 
@@ -128,21 +143,29 @@ handle_call(get_raw_status, _From, S=#state{row=Row}) ->
 
 handle_call({scan_joystick, [FoodRow, FoodCol]}, _From, State=#state{adc={ADC_X, ADC_Y},
 								     spi=SPI, row = Row}) ->
-    timer:sleep(100),
+    % timer:sleep(100),
+    io:format("set_led start~n"),
     NewRow = set_led(SPI, Row, FoodRow, FoodCol, 1),
+    io:format("set_led stop~n"),
+    % gen_server:call(P, {set_led, {RowMap, ColMap}, 1})
     SnakeDirection = do_scan_joystick(ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything),
     {reply, SnakeDirection, State#state{row=NewRow}};
 
-handle_call({set_led, {Row, Col}, Value}, _From, State = #state{row=RowRec, spi=SPI}) ->
-    NewRowRec = set_led(SPI, RowRec, Row, Col, Value),
-    {reply, ok, State#state{row=NewRowRec}};
 
 handle_call(Call, _From, State) ->
     erlang:display(Call),
     {reply, ok, State}.
 
-handle_info({gpio_interrupt, 26}, SPI) ->
-    {noreply, SPI}.
+handle_info({set_led1, {Row, Col}, Value}, State = #state{row=RowRec, spi=SPI}) ->
+    NewRowRec = set_led(SPI, RowRec, Row, Col, Value),
+    {noreply, State#state{row=NewRowRec}}.
+
+handle_cast({set_ledxxxxx, {Row, Col}, Value}, State = #state{row=RowRec, spi=SPI}) ->
+    io:format("handle_cast set_led 1 start~n"),
+    NewRowRec = set_led(SPI, RowRec, Row, Col, Value),
+    {noreply, State#state{row=NewRowRec}}.
+
+
 
 terminate(_Reason, _State) ->
     ok.
@@ -156,22 +179,26 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, Fo
     io:format("fix_edge start 1, SnakeRow, SnakeCol:  ~p, ~p~n", [SnakeRow, SnakeCol]),
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow-1, SnakeCol),
     io:format("fix_edge stop 2~n"),
-            gen_server:call(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
             {SnakeRow1, SnakeCol1};
         2 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow, SnakeCol+1),
-            gen_server:call(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
             {SnakeRow1, SnakeCol1};
         3 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow+1, SnakeCol),
-            gen_server:call(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
             {SnakeRow1, SnakeCol1};
         4 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow, SnakeCol-1),
-            gen_server:call(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
             {SnakeRow1, SnakeCol1};
         _ ->
             {SnakeRow, SnakeCol}
@@ -185,6 +212,7 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, Fo
     % end,
 
     % DONE: check if the food was eaten
+    io:format("food was eaten start~n"),
     [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard12]=
     case FoodRow == SnakeRowRes andalso FoodCol == SnakeColRes of
         true ->
@@ -200,24 +228,34 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, Fo
         false ->
             [{FoodRow, FoodCol}, SnakeLength, GameBoard]
     end,
+    io:format("food was eaten stop~n"),
 
+    io:format("update_game_board start~n"),
     GameBoard1 = update_game_board(GameBoard12, SnakeRowRes, SnakeColRes, NewSnakeLength + 1),
+    io:format("update_game_board stop~n"),
 
+    io:format("update_game_board for movement start~n"),
     GameBoard2 = lists:map(fun({{RowMap, ColMap}, Value})->
         case Value > 0 of
             true ->
                 case (Value - 1) > 0 of
                     true ->
-                        gen_server:call(P, {set_led, {RowMap, ColMap}, 1});
+                        % gen_server:cast(P, {set_led, {RowMap, ColMap}, 1});
+                        P ! {set_led1, {RowMap, ColMap}, 1};
                     false ->
-                        gen_server:call(P, {set_led, {RowMap, ColMap}, 0})
+                        % gen_server:cast(P, {set_led, {RowMap, ColMap}, 0})
+                        P ! {set_led1, {RowMap, ColMap}, 0}
+                        % gen_server:call(P, {set_led, {RowMap, ColMap}, 0})
                 end,
                 {{RowMap, ColMap}, Value - 1};
             _ ->
-                gen_server:call(P, {set_led, {RowMap, ColMap}, 0}),
+                P ! {set_led1, {RowMap, ColMap}, 0},
+                % gen_server:cast(P, {set_led, {RowMap, ColMap}, 0}),
+                % gen_server:call(P, {set_led, {RowMap, ColMap}, 0}),
                 {{RowMap, ColMap}, Value}
         end
     end, GameBoard1),
+    io:format("update_game_board for movement stop~n"),
     [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard2, {SnakeRowRes, SnakeColRes}].
 
 fix_edge(SnakeRow, SnakeCol) when SnakeRow < 1 orelse SnakeRow > 8 ->
