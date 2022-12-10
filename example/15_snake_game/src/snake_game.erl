@@ -84,17 +84,18 @@ loop(P, S=#main{adc={ADC_X, ADC_Y}, game_board=GameBoard, spi=SPI, previous_dire
 
 
     io:format("set_led 1 start~n"),
-    timer:sleep(1000),
     % gen_server:cast(P, {set_led, {FoodRow, FoodCol}, 1}),
-    P ! {set_led1, {FoodRow, FoodCol}, 1},
+    P ! {set_led1, {FoodRow, FoodCol}, 1, self()},
+    % receive {set_led1, ok} -> ok
+    % after 500 -> ok
+    % end,
     io:format("set_led 1 stop~n"),
 
     io:format("scan_joystick start~n"),
     SnakeDirection1 = do_scan_joystick(ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything),
+    % SnakeDirection1 = scan_joystick(2, 0, [ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything]),
     io:format("scan_joystick stop~n"),
-
-
-
+    timer:sleep(600),
 
     % SnakeDirection1 = gen_server:call(P, {scan_joystick, [FoodRow, FoodCol]}),
     SnakeDirection = choose(SnakeDirection1 /=0, SnakeDirection1, PrevSnakeDirection),
@@ -156,8 +157,11 @@ handle_call(Call, _From, State) ->
     erlang:display(Call),
     {reply, ok, State}.
 
-handle_info({set_led1, {Row, Col}, Value}, State = #state{row=RowRec, spi=SPI}) ->
+handle_info({set_led1, {Row, Col}, Value, From}, State = #state{row=RowRec, spi=SPI}) ->
+    % io:format("set_led111111 start~n"),
     NewRowRec = set_led(SPI, RowRec, Row, Col, Value),
+    % io:format("set_led111111 stop~n"),
+    % From ! {set_led1, ok},
     {noreply, State#state{row=NewRowRec}}.
 
 handle_cast({set_ledxxxxx, {Row, Col}, Value}, State = #state{row=RowRec, spi=SPI}) ->
@@ -180,25 +184,37 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, Fo
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow-1, SnakeCol),
     io:format("fix_edge stop 2~n"),
             % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
-            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1, self()},
+            % receive {set_led1, ok} -> ok
+            % after 500 -> ok
+            % end,            
             {SnakeRow1, SnakeCol1};
         2 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow, SnakeCol+1),
             % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
-            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1, self()},
+            % receive {set_led1, ok} -> ok
+            % after 500 -> ok
+            % end,             
             {SnakeRow1, SnakeCol1};
         3 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow+1, SnakeCol),
             % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
-            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1, self()},
+            % receive {set_led1, ok} -> ok
+            % after 500 -> ok
+            % end,             
             {SnakeRow1, SnakeCol1};
         4 ->
             %DONE: the snake to appear on the other side of the screen if it gets out of the edge
             [SnakeRow1, SnakeCol1] = fix_edge(SnakeRow, SnakeCol-1),
             % gen_server:cast(P, {set_led, {SnakeRow1, SnakeCol1}, 1}),
-            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1},
+            P ! {set_led1, {SnakeRow1, SnakeCol1}, 1, self()},
+            % receive {set_led1, ok} -> ok
+            % after 500 -> ok
+            % end,             
             {SnakeRow1, SnakeCol1};
         _ ->
             {SnakeRow, SnakeCol}
@@ -236,24 +252,26 @@ calculate_snake(SnakeDirection, {SnakeRow, SnakeCol}, GameBoard, P, {FoodRow, Fo
 
     io:format("update_game_board for movement start~n"),
     GameBoard2 = lists:map(fun({{RowMap, ColMap}, Value})->
-        case Value > 0 of
-            true ->
-                case (Value - 1) > 0 of
-                    true ->
-                        % gen_server:cast(P, {set_led, {RowMap, ColMap}, 1});
-                        P ! {set_led1, {RowMap, ColMap}, 1};
-                    false ->
-                        % gen_server:cast(P, {set_led, {RowMap, ColMap}, 0})
-                        P ! {set_led1, {RowMap, ColMap}, 0}
-                        % gen_server:call(P, {set_led, {RowMap, ColMap}, 0})
-                end,
-                {{RowMap, ColMap}, Value - 1};
+        case Value of
+            0 ->
+                P ! {set_led1, {RowMap, ColMap}, 0, self()},
+                % receive {set_led1, ok} -> ok
+                % after 500 -> ok
+                % end,                
+                {{RowMap, ColMap}, Value};
+            1 ->
+                P ! {set_led1, {RowMap, ColMap}, 0, self()},
+                % receive {set_led1, ok} -> ok
+                % after 500 -> ok
+                % end,                
+                {{RowMap, ColMap}, Value-1};
             _ ->
-                P ! {set_led1, {RowMap, ColMap}, 0},
-                % gen_server:cast(P, {set_led, {RowMap, ColMap}, 0}),
-                % gen_server:call(P, {set_led, {RowMap, ColMap}, 0}),
-                {{RowMap, ColMap}, Value}
-        end
+                P ! {set_led1, {RowMap, ColMap}, 1, self()},
+                % receive {set_led1, ok} -> ok
+                % after 500 -> ok
+                % end,                
+                {{RowMap, ColMap}, Value-1}
+        end                           
     end, GameBoard1),
     io:format("update_game_board for movement stop~n"),
     [{NewFoodRow, NewFoodCol}, NewSnakeLength, GameBoard2, {SnakeRowRes, SnakeColRes}].
@@ -346,6 +364,13 @@ random(N) ->
 game_board(SnakeRow, SnakeCol, GameBoard) ->
     Index = array_mapping(SnakeRow, SnakeCol),
     lists:nth(Index, GameBoard).
+
+% scan_joystick(Count, SnakeDirection, _) when Count < 0 -> SnakeDirection;
+% scan_joystick(Count, _SnakeDirection, [ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, _]) ->
+%     SnakeDirection = do_scan_joystick(ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything),
+%     % timer:sleep(10),
+%     scan_joystick(Count-1, SnakeDirection, [ADC_X, ADC_Y, {FoodRow, FoodCol}, SPI, anything]).
+
 
 do_scan_joystick(ADC_X, ADC_Y, {_FoodRow, _FoodCol}, _SPI, _PrevSnakeDirection) ->
     SnakeDirection = case adc:read(ADC_X) of
