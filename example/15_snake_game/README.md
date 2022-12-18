@@ -1,8 +1,8 @@
-# `spi_example` Application
+# `snake_game` Application
 
-Welcome to the `spi_example` AtomVM application.
+Welcome to the `snake_game` AtomVM application.
 
-The `spi_example` AtomVM application demonstrates use of the `spi` interface with the popular Smetech SX127x LoRa modem.
+The `snake_game` AtomVM application demonstrates use of the `spi` and `adc` interface to create snake game.
 
 For more information about programming on the AtomVM platform, see the [AtomVM Programmers Guide](https://doc.atomvm.net/programmers-guide.html).
 
