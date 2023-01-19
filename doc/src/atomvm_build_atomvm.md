@@ -22,6 +22,7 @@ make -j 8
 ```
 cd /tools/AtomVM/build/tests
 make
+cd /tools/AtomVM/build/
 /tools/AtomVM/build/src/AtomVM ./tests/erlang_tests/floatabs.beam
 ```
 
