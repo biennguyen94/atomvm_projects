@@ -29,6 +29,12 @@ RUN wget http://packages.erlang-solutions.com/erlang/debian/pool/esl-erlang_21.3
 
 WORKDIR /tools
 
+#DEK network needs following commands to clone github
+#note that DEKVN-CA.crt needs to be located in docker/20.04 folder
+#RUN apt-get --no-install-recommends install -y ca-certificates
+#ADD DEKVN-CA.crt /usr/local/share/ca-certificates/foo.crt
+#RUN chmod 644 /usr/local/share/ca-certificates/foo.crt && update-ca-certificates
+
 RUN git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar3 &&\
     cd rebar3 &&\
     ./bootstrap &&\
