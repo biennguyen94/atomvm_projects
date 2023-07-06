@@ -14,6 +14,8 @@ start() ->
         ]}
     ],
     case network:start(Config) of
+        %After 0.5.1 release, changed the return type of the network:start
+        %function to return the tuple {ok, Pid} on a successful call    
         ok ->
             wait_for_message();
         Error ->
