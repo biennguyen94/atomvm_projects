@@ -17,8 +17,8 @@ docker exec -it bien_atomvm bash
 
 ## Push image to container
 ```
-docker tag bien_atomvm.test biennguyen94/atomvm:v1
-docker push biennguyen94/atomvm:v1
+docker tag bien_atomvm.test biennguyen94/atomvm:ubuntu22_04_v1
+docker push biennguyen94/atomvm:ubuntu22_04_v1
 ```
 
 ## Docker eats disk space

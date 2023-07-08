@@ -11,7 +11,11 @@ RUN apt-get -qq install minicom -y &&\
 apt-get -qq install screen vim -y
 
 ## Fix "No CMAKE_CXX_COMPILER could be found" issue
-# RUN apt-get install build-essential -y
+RUN apt-get install build-essential -y
+
+## needed for make command to build atomvm
+RUN apt-get install zlib1g-dev -y
+
 
 # ESP 32
 ## Prepare directories
