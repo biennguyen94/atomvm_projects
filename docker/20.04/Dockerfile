@@ -56,7 +56,7 @@ ENV PATH $PATH:/tools/esp/xtensa-esp32-elf/bin
 # Export IDF_PATH
 ENV IDF_PATH /tools/esp/esp-idf
 
-# Clone and build esp-idf v3.2-rc
+# Clone and build esp-idf v4.4-rc
 RUN git clone -b release/v4.4 --recursive https://github.com/espressif/esp-idf.git esp-idf
 
 RUN $IDF_PATH/install.sh esp32
