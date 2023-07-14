@@ -4,7 +4,11 @@ FROM ubuntu:jammy
 WORKDIR /root
 
 ## Install esp-idf deps
-RUN apt-get -qq update && apt-get -qq install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 -y
+RUN apt-get -qq update &&\
+ apt-get -qq install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0 -y &&\
+ apt-get -qq install pip -y
+
+RUN python3 -m pip install pyserial
 
 ## Install minicom
 RUN apt-get -qq install minicom -y &&\
