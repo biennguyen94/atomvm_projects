@@ -19,7 +19,7 @@ make
 note: this .img is also available at: https://github.com/biennguyen94/atomvm_basic_projects/tree/master/atomvm_image/adc_nif
 
 
-## Create .img (ubuntu 22.04, esp-idf v4.4, OTP 25)
+## Create .img (ubuntu 22.04, esp-idf v4.4, OTP 25) - DO NOT WORK
 ```
 cd /tools
 
