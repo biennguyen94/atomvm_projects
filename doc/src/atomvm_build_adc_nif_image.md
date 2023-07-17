@@ -19,7 +19,7 @@ make
 note: this .img is also available at: https://github.com/biennguyen94/atomvm_basic_projects/tree/master/atomvm_image/adc_nif
 
 
-## Create .img (ubuntu 22.04, esp-idf v4.4, OTP 25) - DO NOT WORK
+## Create .img (ubuntu 22.04, esp-idf v4.4, OTP 25)
 ```
 cd /tools
 
@@ -27,7 +27,7 @@ git clone -b release/v4.4 --recursive https://github.com/espressif/esp-idf.git e
 
 git clone https://github.com/atomvm/AtomVM
 cd /tools/AtomVM
-git reset --hard d9883129701e4c72bb90a5751a423bb7d258bbfa
+git reset --hard 299fa6afb61debb9d8c2342d3aaf3bd8d75cdd4f
 
 mkdir build
 cd build
@@ -36,7 +36,7 @@ make -j 8
 
 cd /tools/AtomVM/src/platforms/esp32/components
 git clone https://github.com/biennguyen94/atomvm_adc.git
-git reset --hard c7ac43bbfae70c846c4ef1b72a641d1c5420799c
+git reset --hard b875bb8a7d5cf45918e55df7b4fbd877088af680
 
 cd /tools/AtomVM/src/platforms/esp32/
 /tools/esp/esp-idf/install.sh esp32
