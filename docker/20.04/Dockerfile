@@ -35,8 +35,14 @@ WORKDIR /tools
 #ADD DEKVN-CA.crt /usr/local/share/ca-certificates/foo.crt
 #RUN chmod 644 /usr/local/share/ca-certificates/foo.crt && update-ca-certificates
 
-RUN git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar3 &&\
+# RUN git clone -b 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar3 &&\
+#     cd rebar3 &&\
+#     ./bootstrap &&\
+#     ./rebar3 local install
+
+RUN git clone -b 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar3 &&\
     cd rebar3 &&\
+    git checkout 3f563feaf1091a1980241adefa83a32dd2eebf7c &&\
     ./bootstrap &&\
     ./rebar3 local install
 
