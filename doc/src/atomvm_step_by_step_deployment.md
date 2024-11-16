@@ -37,7 +37,8 @@ cmake ..
 make -j 8
 ```
 
-To build esp32 for esp-idf 4.4 and later (ubuntu 20.04)
+To build esp32 for esp-idf 4.4 and later (ubuntu 20.04).
+Note: python3 is sourced by command `. $IDF_PATH/export.sh`
 ```
 cd /tools/AtomVM/src/platforms/esp32
 . $IDF_PATH/export.sh

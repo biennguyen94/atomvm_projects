@@ -67,7 +67,7 @@ git clone --branch 3.24.0 --recursive https://github.com/erlang/rebar3.git rebar
     ./bootstrap &&\
     ./rebar3 local install
 
-ENV PATH $PATH:/root/.cache/rebar3/bin
+ENV PATH $PATH:/root/26.2.5.5/.cache/rebar3/bin
 
 # WORKDIR /tools
 
