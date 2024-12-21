@@ -25,6 +25,7 @@ To build this project, you should know about Led matrix 8x8 with MAX7219, MPU650
 
 ### Circuit Diagram
 ![](../hour_glass/assets/HourGlass.png)
+![](../hour_glass/assets/hour_glass.png)
 
 ## Features and Implementation
 ### Features.
