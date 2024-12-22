@@ -6,57 +6,25 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         terminate/2, code_change/3]).
 
--define(DELAY_READ_ADC, 100).
--define(MAX_SPEED, 100).
--define(MIN_SPEED, 1000).
--define(BIT_RESOLUTION, 4095).
-
--define(LED0, 0).
--define(LED1, 1).
-
--record(state, {spi, crossbar, ball, direction, point, data1, data2, isgameover, goverproc, score}).
-
--define(NUM_OF_BITS, 8).
-
--define(DEVICE_NAME, device_1).
-
--define(SPISettings, [
-    {bus_config, [
-        {miso_io_num, 19},
-        {mosi_io_num, 27},
-        {sclk_io_num, 5}
-    ]},
-    {device_config, [
-        {device_1, [
-            {spi_clock_hz, 1000000},
-            {mode, 0},
-            {spi_cs_io_num, 18},
-            {address_len_bits, 8}
-        ]},
-        {device_2, [
-            {spi_clock_hz, 1000000},
-            {mode, 0},
-            {spi_cs_io_num, 23},
-            {address_len_bits, 8}
-        ]}
-    ]}
-]).
-
 start() ->
+    erlang:system_flag(schedulers_online, 2),
     % Start gen server and spi peripheral
     {ok, P} = gen_server:start(?MODULE, [], []),
     gen_server:cast(P, update_game),
 
-    % % Setup ADC to read Joystick
+    % Setup ADC to read Joystick
     {ADCX, ADCY} = setup_adc(),
     spawn(?MODULE, joystick, [P, ADCX, ADCY]),
 
+    %%% TEMPORORY COMMENT READING POLIMETER FOR NOW AS RETURN OF READING ADC IS UNSTABLE VALUES
+    %%% TO IMPROVE IN THE FUTURE
     % Setup ADC to read polimeter
-    {ok, VRes} = adc:start(?GPIO_RESISTOR, [{attenuation, db_11}, {bit_width, bit_12}]),
-    spawn(?MODULE, variable_resistor, [self(), VRes, ?MAX_SPEED]),
+    % ok = esp_adc:start(?GPIO_RESISTOR),
+    % spawn(?MODULE, variable_resistor, [self(), ?GPIO_RESISTOR, ?MAX_SPEED]),
+    %%%
 
     % io:format("INIT OK ~n"),
-    % % move ball
+    % move ball
     ball(P, 150).
 
 init(_) ->
@@ -510,12 +478,12 @@ init_sw_interrupt() ->
     gpio:set_int(GPIO, ?GPIO_SW, rising).
 
 setup_adc() ->
-    {ok, ADCX} = adc:start(?GPIO_VRx, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ok, ADCY} = adc:start(?GPIO_VRy, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ADCX, ADCY}.
+    ok = esp_adc:start(?GPIO_VRx),
+    ok = esp_adc:start(?GPIO_VRy),
+    {?GPIO_VRx, ?GPIO_VRy}.
 
 read_adc(ADC) ->
-    case adc:read(ADC) of
+    case esp_adc:read(ADC) of
         {ok, {Raw, _MilliVolts}} ->
             {ok, Raw};
         Error ->
@@ -525,7 +493,7 @@ read_adc(ADC) ->
 % Currently we dont use ADCY, but if new idea need it, we will use it
 joystick(Pid, ADCX, ADCY) ->
     {ok, X} = read_adc(ADCX),
-    {ok, _Y} = read_adc(ADCY),
+    % {ok, _Y} = read_adc(ADCY),
     if
         X < ?LOW_RANGE ->
             gen_server:cast(Pid, {move_cross_bar, -1});

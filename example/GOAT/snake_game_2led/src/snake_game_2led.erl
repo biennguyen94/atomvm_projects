@@ -6,61 +6,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         terminate/2, code_change/3]).
 
--define(GPIO_VRx, 34).
--define(GPIO_VRy, 35).
--define(GPIO_SW, 32).
--define(GPIO_RESISTOR, 33).
-
--define(GPIO_MISO, 19).
--define(GPIO_MOSI, 27).
--define(GPIO_SLCK, 5).
--define(GPIO_CS, 18).
-
--define(LOW_RANGE, 100).
--define(HIGH_RANGE, 4000).
-
--define(DELAY_READ_ADC, 20).
--define(MAX_SPEED, 200).
--define(MIN_SPEED, 1000).
--define(BLINK_RATE, 200).
--define(BIT_RESOLUTION, 4095).
-
--define(NUM_OF_BITS, 8).
-
--define(DEVICE_NAME, device_1).
-
--define(SPISettings, [
-    {bus_config, [
-        {miso_io_num, 19},
-        {mosi_io_num, 27},
-        {sclk_io_num, 5}
-    ]},
-    {device_config, [
-        {device_1, [
-            {spi_clock_hz, 1000000},
-            {mode, 0},
-            {spi_cs_io_num, 18},
-            {address_len_bits, 8}
-        ]},
-        {device_2, [
-            {spi_clock_hz, 1000000},
-            {mode, 0},
-            {spi_cs_io_num, 23},
-            {address_len_bits, 8}
-        ]}
-    ]}
-]).
-% Default Snake Status
--define(LED0, 0).
--define(LED1, 1).
-
--define(HEAD, {?LED0, {2, 4}}).
--define(BODY, #{0 => {?LED0, {1, 4}}, 1 => {?LED0, {2,4}}}).
--define(DIRECTION, {1, 0}).
-
--record(snake, {spi, snakehead, snakebody, snakelen, food, data1, data2, direction, gameover, goverproc}).
-
 start() ->
+    erlang:system_flag(schedulers_online, 2),
     % Start Gen server and setup some peripherals
     {ok, Pid} = gen_server:start(?MODULE, [], []),
 
@@ -68,10 +15,13 @@ start() ->
     {ADCX, ADCY} = setup_adc(),
     spawn(?MODULE, joystick, [Pid, ADCX, ADCY]),
 
+    %%% TEMPORORY COMMENT READING POLIMETER FOR NOW AS RETURN OF READING ADC IS UNSTABLE VALUES
+    %%% TO IMPROVE IN THE FUTURE
     % Init Variable resitor and Spawn new process to handle read variable resistor
     % This process help us read variable resistor to change the speed of Snake
-    {ok, VRes} = adc:start(?GPIO_RESISTOR, [{attenuation, db_11}, {bit_width, bit_12}]),
-    spawn(?MODULE, variable_resistor, [self(), VRes, ?MAX_SPEED]),
+    % ok = esp_adc:start(?GPIO_RESISTOR),
+    % spawn(?MODULE, variable_resistor, [self(), ?GPIO_RESISTOR, ?MAX_SPEED]),
+    %%%
 
     % Spawn new process to handle blink the food
     spawn(?MODULE, blink_food, [Pid]),
@@ -221,12 +171,12 @@ init_sw_interrupt() ->
 %%% ADC part to control Joystick %%%
 
 setup_adc() ->
-    {ok, ADCX} = adc:start(?GPIO_VRx, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ok, ADCY} = adc:start(?GPIO_VRy, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ADCX, ADCY}.
+    ok = esp_adc:start(?GPIO_VRx),
+    ok = esp_adc:start(?GPIO_VRy),    
+    {?GPIO_VRx, ?GPIO_VRy}.
 
 read_adc(ADC) ->
-    case adc:read(ADC) of
+    case esp_adc:read(ADC) of
         {ok, {Raw, _MilliVolts}} ->
             {ok, Raw};
         Error ->

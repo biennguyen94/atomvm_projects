@@ -6,18 +6,6 @@
 
 -include("global.hrl").
 
--define(TOP, top).
--define(BOTTOM, bot).
--define(LEFT, left).
--define(RIGHT, right).
--define(MIDDLE, mid).
--define(MAX_ROW, 15).
-
--define(YES, 1).
--define(NO, -1).
-
--record(state, {spi, data1, data2, predata1, predata2, direction, isstop, timer}).
-
 start() ->
     erlang:system_flag(schedulers_online, 2),
     % Setup MPU
@@ -351,7 +339,7 @@ write_register(SPI, Address, Data, Device) ->
 %%% MPU part %%%
 % Read value from MPU and calculate current Angle
 i2c_init() ->
-    i2c:open([{scl_io_num, ?GPIO_SCL}, {sda_io_num, ?GPIO_SDA}, {i2c_clock_hz, ?BASE_FREQ}]).
+    i2c:open([{scl, ?GPIO_SCL}, {sda, ?GPIO_SDA}, {clock_speed_hz, ?BASE_FREQ}]).
 
 mpu_config(I2C) ->
     mpu_send_command(I2C, ?ACC_CONFIG_ADDR, ?ACC_FULL_SCALE_16_G).

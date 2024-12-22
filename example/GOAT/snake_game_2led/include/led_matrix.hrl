@@ -15,6 +15,60 @@
 -define(SHUTDOWN, 16#C).
 -define(DISPLAY_TEST, 16#F).
 
+-define(GPIO_VRx, 34).
+-define(GPIO_VRy, 35).
+-define(GPIO_SW, 32).
+-define(GPIO_RESISTOR, 33).
+
+-define(GPIO_MISO, 19).
+-define(GPIO_MOSI, 27).
+-define(GPIO_SLCK, 5).
+-define(GPIO_CS, 18).
+
+-define(LOW_RANGE, 700).
+-define(HIGH_RANGE, 3900).
+
+-define(DELAY_READ_ADC, 20).
+-define(MAX_SPEED, 200).
+-define(MIN_SPEED, 1000).
+-define(BLINK_RATE, 200).
+-define(BIT_RESOLUTION, 4095).
+
+-define(NUM_OF_BITS, 8).
+
+-define(DEVICE_NAME, device_1).
+
+-define(SPISettings, [
+    {bus_config, [
+        {miso_io_num, 19},
+        {mosi_io_num, 27},
+        {sclk_io_num, 5}
+    ]},
+    {device_config, [
+        {device_1, [
+            {spi_clock_hz, 1000000},
+            {mode, 0},
+            {spi_cs_io_num, 18},
+            {address_len_bits, 8}
+        ]},
+        {device_2, [
+            {spi_clock_hz, 1000000},
+            {mode, 0},
+            {spi_cs_io_num, 23},
+            {address_len_bits, 8}
+        ]}
+    ]}
+]).
+% Default Snake Status
+-define(LED0, 0).
+-define(LED1, 1).
+
+-define(HEAD, {?LED0, {2, 4}}).
+-define(BODY, #{0 => {?LED0, {1, 4}}, 1 => {?LED0, {2,4}}}).
+-define(DIRECTION, {1, 0}).
+
+-record(snake, {spi, snakehead, snakebody, snakelen, food, data1, data2, direction, gameover, goverproc}).
+
 -define(EMPTY_MATRIX, #{
                         ?DIGIT_0 => 2#00000000,
                         ?DIGIT_1 => 2#00000000,
@@ -399,7 +453,7 @@
                 40 => 2#01111110,
                 41 => 2#00001010,
                 42 => 2#00001010,
-                42 => 2#01110110, % R
-                43 => 2#00000000,
-                44 => 2#00000000
+                43 => 2#01110110, % R
+                44 => 2#00000000,
+                45 => 2#00000000
     }).
