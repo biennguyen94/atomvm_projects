@@ -1,18 +1,19 @@
 # Prepare docker container
 Pull docker image
 ```
-docker pull biennguyen94/atomvm:ubuntu20_04_v3
+docker pull biennguyen94/atomvm:ubuntu24_04_v1
 ```
 
 Or build docker image
 ```
-cd /tools/atomvm_basic_projects/docker/20.04
+cd /tools/atomvm_basic_projects/docker/24.04
 docker build --network host -t bien_atomvm.test .
 ```
 
 Deploy docker image to container
 ```
 docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it biennguyen94/atomvm:ubuntu20_04_v3 bash
+docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it bien_atomvm.test bash
 ```
 
 In first time, after exiting from container, we need to start container
@@ -37,7 +38,7 @@ cmake ..
 make -j 8
 ```
 
-To build esp32 for esp-idf 4.4 and later (ubuntu 20.04).
+To build esp32 for esp-idf 4.4 (and later), ubuntu 20.04 (and later).
 Note: python3 is sourced by command `. $IDF_PATH/export.sh`
 ```
 cd /tools/AtomVM/src/platforms/esp32
@@ -53,13 +54,13 @@ cd /tools/AtomVM/build
 ```
 
 To erase the flash
-For ubuntu 20.04:
+For ubuntu 20.04 (and later):
 ```
 python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
 ```
 
 To flash the entire image to device
-For ubuntu 20.04:
+For ubuntu 20.04 (and later):
 ```
 python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
@@ -72,6 +73,11 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --flash_size detect \
     0x1000 \
     /tools/AtomVM/src/platforms/esp32/build/atomvm-esp32-0.5.0.img
+```
+
+Note: v0.6.5 image can be found at:
+```
+/tools/atomvm_basic_projects/atomvm_image/AtomVM-esp32-v0.6.5/AtomVM-esp32-v0.6.5.img
 ```
 
 # Running blinky example
