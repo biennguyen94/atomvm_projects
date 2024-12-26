@@ -11,7 +11,7 @@ start() ->
     % Start Gen server and setup some peripherals
     {ok, Pid} = gen_server:start(?MODULE, [], []),
 
-    % Init Joystick and Spawn new process to handle read Joystick
+    % Init Joystick and spawn new process to handle reading Joystick
     {ADCX, ADCY} = setup_adc(),
     spawn(?MODULE, joystick, [Pid, ADCX, ADCY]),
 
@@ -35,7 +35,7 @@ init(_) ->
     init_sw_interrupt(),
     {SnakeHead, SnakeBody, Food, {Data1, Data2}} = init_snake(SPI, ?BODY),
     io:format("Init SPI and MAX7219 OK~n ~n"),
-    NewState = #snake{spi = SPI, snakehead = SnakeHead, snakebody = SnakeBody, snakelen = 2,
+    NewState = #snake{spi = SPI, snakehead = SnakeHead, snakebody = SnakeBody, snakelen = ?SNAKE_LENGTH,
                         food = Food, direction = ?DIRECTION, data1 = Data1, data2 = Data2, gameover = false},
     {ok, NewState}.
 
@@ -99,7 +99,7 @@ handle_info({gpio_interrupt, ?GPIO_SW}, State) ->
             ok
     end,
     {SnakeHead, SnakeBody, Food, {Data1, Data2}} = init_snake(State#snake.spi, ?BODY),
-    NewState = State#snake{snakehead = SnakeHead, snakebody = SnakeBody, snakelen = 2,
+    NewState = State#snake{snakehead = SnakeHead, snakebody = SnakeBody, snakelen = ?SNAKE_LENGTH,
                         food = Food, direction = ?DIRECTION, data1 = Data1, data2 = Data2, gameover = false, goverproc = undefined},
     {noreply, NewState}.
 
@@ -211,8 +211,8 @@ init_snake(SPI, Body) ->
     Data1 = DigitList#{HeadX + 1 := (128 bsr HeadY), HeadX := (128 bsr HeadY)},
     Data2 = ?EMPTY_MATRIX,
 
-    % Radom first food and add to Data
-    {FoodID, {FoodX, FoodY}} = spawn_new_food(Body, 2),
+    % Random first food and add to Data
+    {FoodID, {FoodX, FoodY}} = spawn_new_food(Body, ?SNAKE_LENGTH),
     TempData = get_data(get_device(FoodID), {Data1, Data2}),
     Row = maps:get(FoodX + 1, TempData) bor (128 bsr FoodY),
     NewData = TempData#{FoodX + 1 := Row},
@@ -232,7 +232,7 @@ move_snake(State) ->
     % Handle border
     NewSnakeHead = handle_border(Id, SnakeHead),
 
-    % Handle eat Food or not
+    % Handle eating Food or not
     case NewSnakeHead == State#snake.food of
         true ->
             NewSnakeLen = State#snake.snakelen + 1,
@@ -520,7 +520,7 @@ variable_resistor(Parrent, ADC, PreviousSpeed) ->
 is_not_in_range(PreVal, NewVal) ->
     Low = PreVal - 10,
     High = PreVal + 10,
-    case (NewVal >= Low )and (NewVal =< High) of
+    case (NewVal >= Low) and (NewVal =< High) of
         true ->
             false;
         false ->

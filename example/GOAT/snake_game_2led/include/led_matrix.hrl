@@ -66,6 +66,7 @@
 -define(HEAD, {?LED0, {2, 4}}).
 -define(BODY, #{0 => {?LED0, {1, 4}}, 1 => {?LED0, {2,4}}}).
 -define(DIRECTION, {1, 0}).
+-define(SNAKE_LENGTH, 2).
 
 -record(snake, {spi, snakehead, snakebody, snakelen, food, data1, data2, direction, gameover, goverproc}).
 
