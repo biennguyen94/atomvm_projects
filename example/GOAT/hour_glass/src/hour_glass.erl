@@ -34,7 +34,7 @@ handle_call(print_test, _From, State) ->
         State#state.isstop ->
             {reply, ok, State};
         true ->
-            T1 = erlang:system_time(microsecond),
+            % T1 = erlang:system_time(microsecond),
             {NewData1, NewData2} = update_data(0, State#state.spi, State#state.data1, State#state.data2,
                 State#state.direction),
             if
@@ -57,8 +57,8 @@ handle_call(print_test, _From, State) ->
                     NewState = State#state{data1 = LastData1, data2 = LastData2,
                                             predata1 = State#state.data1, predata2 = State#state.data2, timer = Timer}
             end,
-            T2 = erlang:system_time(microsecond),
-            io:format("Delay ~p ~n", [T2 - T1]),
+            % T2 = erlang:system_time(microsecond),
+            % io:format("Delay ~p ~n", [T2 - T1]),
             {reply, ok, NewState}
     end;
 
@@ -117,11 +117,13 @@ set_x_y_raw(SPI, Device, Data, {X, Y}, ?YES) ->
     Row = maps:get(X + 1, Data),
     Temp = (128 bsr Y) bor Row,
     write_register(SPI, X + 1, Temp, Device),
+    % timer:sleep(20),
     Data#{X + 1 := Temp};
 set_x_y_raw(SPI, Device, Data, {X, Y}, ?NO) ->
     Row = maps:get(X + 1, Data),
     Temp = (bnot (128 bsr Y)) band Row,
     write_register(SPI, X + 1, Temp, Device),
+    % timer:sleep(20),
     Data#{X + 1 := Temp}.
 
 % Transform {X, Y} according to current Direction
@@ -311,13 +313,13 @@ get_position({X, Y}, Dir) ->
 init_max7219(SPISettings) ->
     SPI = spi:open(SPISettings),
     write_register(SPI, ?DECODE_MODE, 16#0, device_1),    % No decoding
-    write_register(SPI, ?INTENSITY, 16#3, device_1),      % Brightness intensity
+    write_register(SPI, ?INTENSITY, 16#0, device_1),      % Brightness intensity
     write_register(SPI, ?SCAN_LIMIT, 16#7, device_1),     % Scan limit = 8 LEDs
     write_register(SPI, ?SHUTDOWN, 16#1, device_1),       % Power down = 0, Normal mode = 1
     write_register(SPI, ?DISPLAY_TEST, 16#0, device_1),   % No display Test
 
     write_register(SPI, ?DECODE_MODE, 16#0, device_2),    % No decoding
-    write_register(SPI, ?INTENSITY, 16#3, device_2),      % Brightness intensity
+    write_register(SPI, ?INTENSITY, 16#0, device_2),      % Brightness intensity
     write_register(SPI, ?SCAN_LIMIT, 16#7, device_2),     % Scan limit = 8 LEDs
     write_register(SPI, ?SHUTDOWN, 16#1, device_2),       % Power down = 0, Normal mode = 1
     write_register(SPI, ?DISPLAY_TEST, 16#0, device_2),   % No display Test
