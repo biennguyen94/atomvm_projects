@@ -2,7 +2,7 @@
 
 -include("led_matrix.hrl").
 
--export([start/0, joystick/3, blink_food/1, game_over_process/2, variable_resistor/3]).
+-export([start/0, joystick/3, blink_food/1, game_over_process/3, welcome_snake_game_process/2, variable_resistor/3]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         terminate/2, code_change/3]).
 
@@ -33,10 +33,9 @@ start() ->
 init(_) ->
     {ok, SPI} = init_max7219(?SPISettings),
     init_sw_interrupt(),
-    {SnakeHead, SnakeBody, Food, {Data1, Data2}} = init_snake(SPI, ?BODY),
     io:format("Init SPI and MAX7219 OK~n ~n"),
-    NewState = #snake{spi = SPI, snakehead = SnakeHead, snakebody = SnakeBody, snakelen = ?SNAKE_LENGTH,
-                        food = Food, direction = ?DIRECTION, data1 = Data1, data2 = Data2, gameover = false},
+    NewProc = spawn(?MODULE, welcome_snake_game_process, [self(), 0]),
+    NewState = #snake{spi = SPI, gameover = true, goverproc = NewProc},
     {ok, NewState}.
 
 handle_call(_Msg, _From, State) ->
@@ -70,6 +69,11 @@ handle_cast({display_game_over, Times}, State) ->
     display_game_text(State#snake.spi, Times, lose),
     {noreply, State};
 
+% Handle display Moving "SNAKE GAME" text
+handle_cast({display_snake_game, Times}, State) ->
+    display_game_text(State#snake.spi, Times, welcome),
+    {noreply, State};
+
 % Handle blink the food (need check current game over status)
 handle_cast(turn_off_food, State) ->
     if
@@ -101,6 +105,18 @@ handle_info({gpio_interrupt, ?GPIO_SW}, State) ->
     {SnakeHead, SnakeBody, Food, {Data1, Data2}} = init_snake(State#snake.spi, ?BODY),
     NewState = State#snake{snakehead = SnakeHead, snakebody = SnakeBody, snakelen = ?SNAKE_LENGTH,
                         food = Food, direction = ?DIRECTION, data1 = Data1, data2 = Data2, gameover = false, goverproc = undefined},
+    {noreply, NewState};
+
+handle_info(back_to_welcome, State) ->
+    io:format("receive back_to_welcome~n"),
+    case is_pid(State#snake.goverproc) of
+        true ->
+            State#snake.goverproc ! stop;
+        false ->
+            ok
+    end,
+    NewProc = spawn(?MODULE, welcome_snake_game_process, [self(), 0]),
+    NewState = State#snake{gameover = true, goverproc = NewProc},
     {noreply, NewState}.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
@@ -258,7 +274,7 @@ move_snake(State) ->
             write_digit(State#snake.spi, ?DIGIT_0, Data2, device_2),
             timer:sleep(2000),
             % Spawn new process to send display_game_over request
-            NewProc = spawn(?MODULE, game_over_process, [self(), 0]),
+            NewProc = spawn(?MODULE, game_over_process, [self(), 0, 0]),
             State#snake{gameover = true, goverproc = NewProc};
         true ->
             % Game not over yet, update new Snake and display in Ledmatrix
@@ -389,6 +405,11 @@ display_game_text(SPI, Times, Command) ->
 get_data(Result, 9, _Times, _) ->
     Result;
 
+get_data(Result, Number, Times, welcome) ->
+    Row = maps:get(Number + Times, ?SNAKE_GAME),
+    NewResult = Result#{Number := Row},
+    get_data(NewResult, Number + 1, Times, welcome);
+
 get_data(Result, Number, Times, lose) ->
     Row = maps:get(Number + Times, ?GAME_OVER),
     NewResult = Result#{Number := Row},
@@ -476,20 +497,43 @@ turn_on_food(SPI, {FoodID, {FoodX, FoodY}}, Data) ->
 
 
 % Game over process callback
-game_over_process(P, Times) ->
+game_over_process(P, Times, CountResetToWelcome) ->
     receive
         stop ->
             ok
-    after 300 ->
+    after 200 ->
         gen_server:cast(P, {display_game_over, Times}),
         % Handle to display GAME OVER text again
-        case (Times + 1) == 29 of
+        case (Times + 1) == 61 of
+            true ->
+                NewTimes = 0,
+                NewCountResetToWelcome = CountResetToWelcome + 1;
+            false ->
+                NewTimes = Times + 1,
+                NewCountResetToWelcome = CountResetToWelcome
+        end,
+        case CountResetToWelcome == 1 of
+            true -> P ! back_to_welcome;
+            _ -> ok
+        end,
+        game_over_process(P, NewTimes, NewCountResetToWelcome)
+    end.
+
+% welcome snake_game process callback
+welcome_snake_game_process(P, Times) ->
+    receive
+        stop ->
+            ok
+    after 200 ->
+        gen_server:cast(P, {display_snake_game, Times}),
+        % Handle to display SNAKE GAME text again
+        case (Times + 1) == 66 of
             true ->
                 NewTimes = 0;
             false ->
                 NewTimes = Times + 1
         end,
-        game_over_process(P, NewTimes)
+        welcome_snake_game_process(P, NewTimes)
     end.
 
 % Bink food callback
