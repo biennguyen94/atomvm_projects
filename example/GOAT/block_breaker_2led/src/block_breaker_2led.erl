@@ -2,7 +2,8 @@
 
 -include("global.hrl").
 
--export([start/0, joystick/3, variable_resistor/3, game_over_process/2, game_win_process/2]).
+-export([start/0, joystick/3, variable_resistor/3, game_over_process/3,
+        welcome_block_breaker_game_process/2, game_win_process/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
         terminate/2, code_change/3]).
 
@@ -10,7 +11,6 @@ start() ->
     erlang:system_flag(schedulers_online, 2),
     % Start gen server and spi peripheral
     {ok, P} = gen_server:start(?MODULE, [], []),
-    gen_server:cast(P, update_game),
 
     % Setup ADC to read Joystick
     {ADCX, ADCY} = setup_adc(),
@@ -31,8 +31,8 @@ init(_) ->
     {ok, SPI} = init_max7219(?SPISettings),
     init_sw_interrupt(),
     % Default setup when start the game
-    State = #state{spi = SPI, crossbar = ?CROSS_BAR, data1 = ?EMPTY_MATRIX, data2 = ?EMPTY_MATRIX, score = 0, goverproc = undefined,
-                point = ?DEFAULT_POINT, ball = ?BALL, direction = {-1, 1}, isgameover = false},
+    NewProc = spawn(?MODULE, welcome_block_breaker_game_process, [self(), 0]),
+    State = #state{spi = SPI, goverproc = NewProc, isgameover = true},
     io:format("Init SPI and MAX7219 OK ~p ~n", [?CROSS_BAR]),
     {ok, State}.
 
@@ -108,7 +108,7 @@ handle_cast(move_ball, State) ->
                     write_digit(State#state.spi, ?DIGIT_0, Data2, device_2),
                     timer:sleep(2000),
                     % Spawn new process to send display_game_over request
-                    NewProc = spawn(?MODULE, game_over_process, [self(), 0]),
+                    NewProc = spawn(?MODULE, game_over_process, [self(), 0, 0]),
                     NewState = State#state{isgameover = true, goverproc = NewProc};
                 NewScore == ?MAX_POINT ->
                     io:format("GAME WIN ~n"),
@@ -137,6 +137,10 @@ handle_cast({display_game_win, Times}, State) ->
 
 handle_cast({display_game_over, Times}, State) ->
     display_game_text(State#state.spi, Times, lose),
+    {noreply, State};
+
+handle_cast({display_breaker_game, Times}, State) ->
+    display_game_text(State#state.spi, Times, welcome),
     {noreply, State}.
 
 % Handle interrupt signel to reset the game
@@ -150,7 +154,19 @@ handle_info({gpio_interrupt, ?GPIO_SW}, State) ->
     end,
     gen_server:cast(self(), reset_game),
     gen_server:cast(self(), update_game),
-    {noreply, State}.
+    {noreply, State};
+
+handle_info(back_to_welcome, State) ->
+    io:format("receive back_to_welcome~n"),
+    case is_pid(State#state.goverproc) of
+        true ->
+            State#state.goverproc ! stop;
+        false ->
+            ok
+    end,
+    NewProc = spawn(?MODULE, welcome_block_breaker_game_process, [self(), 0]),
+    NewState = State#state{isgameover = true, goverproc = NewProc},
+    {noreply, NewState}.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 terminate(_Reason, _State) ->
@@ -538,7 +554,7 @@ get_num_macro(Number) ->
             ?NUMBER_9
     end.
 
-% Display Game win or Game over
+% Display Game win or Game over or welcome 
 display_game_text(SPI, Times, Command) ->
     Data1 = get_data(?EMPTY_MATRIX, 1, Times, Command),
     Data2 = get_data(?EMPTY_MATRIX, 1, Times + 8, Command),
@@ -548,6 +564,11 @@ display_game_text(SPI, Times, Command) ->
 % Helper function to Get Data which use to print to Led matrix
 get_data(Result, 9, _Times, _) ->
     Result;
+
+get_data(Result, Number, Times, welcome) ->
+    Row = maps:get(Number + Times, ?BREAKER_GAME),
+    NewResult = Result#{Number := Row},
+    get_data(NewResult, Number + 1, Times, welcome);
 
 get_data(Result, Number, Times, lose) ->
     Row = maps:get(Number + Times, ?GAME_OVER),
@@ -561,27 +582,50 @@ get_data(Result, Number, Times, win) ->
 
 %%% Some process function call back %%%%
 
-game_over_process(P, Times) ->
+game_over_process(P, Times, CountResetToWelcome) ->
     receive
         stop ->
             ok
-    after 300 ->
+    after 200 ->
         gen_server:cast(P, {display_game_over, Times}),
         % Handle to display GAME OVER text again
-        case (Times + 1) == 29 of
+        case (Times + 1) == 61 of
+            true ->
+                NewTimes = 0,
+                NewCountResetToWelcome = CountResetToWelcome + 1;
+            false ->
+                NewTimes = Times + 1,
+                NewCountResetToWelcome = CountResetToWelcome
+        end,
+        case CountResetToWelcome == 1 of
+            true -> P ! back_to_welcome;
+            _ -> ok
+        end,        
+        game_over_process(P, NewTimes, NewCountResetToWelcome)
+    end.
+
+% welcome block_breaker_game process callback
+welcome_block_breaker_game_process(P, Times) ->
+    receive
+        stop ->
+            ok
+    after 200 ->
+        gen_server:cast(P, {display_breaker_game, Times}),
+        % Handle to display BREAKER GAME text again
+        case (Times + 1) == 75 of
             true ->
                 NewTimes = 0;
             false ->
                 NewTimes = Times + 1
         end,
-        game_over_process(P, NewTimes)
+        welcome_block_breaker_game_process(P, NewTimes)
     end.
 
 game_win_process(P, Times) ->
     receive
         stop ->
             ok
-    after 300 ->
+    after 200 ->
         gen_server:cast(P, {display_game_win, Times}),
         % Handle to display GAME OVER text again
         case (Times + 1) == 27 of
