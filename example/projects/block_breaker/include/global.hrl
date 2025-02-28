@@ -1,5 +1,5 @@
--define(LOW_RANGE, 100).
--define(HIGH_RANGE, 4000).
+-define(LOW_RANGE, 700).
+-define(HIGH_RANGE, 3000).
 
 -define(GPIO_VRx, 34).
 -define(GPIO_VRy, 35).

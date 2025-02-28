@@ -43,8 +43,8 @@ start() ->
     spawn(?MODULE, joystick, [P, ADCX, ADCY]),
 
     % Setup ADC to read polimeter
-    {ok, VRes} = adc:start(?GPIO_RESISTOR, [{attenuation, db_11}, {bit_width, bit_12}]),
-    spawn(?MODULE, variable_resistor, [self(), VRes, ?MAX_SPEED]),
+    ok = esp_adc:start(?GPIO_RESISTOR),
+    spawn(?MODULE, variable_resistor, [self(), ?GPIO_RESISTOR, ?MAX_SPEED]),
 
     io:format("INIT OK ~n"),
     % move ball
@@ -372,12 +372,12 @@ init_sw_interrupt() ->
     gpio:set_int(GPIO, ?GPIO_SW, rising).
 
 setup_adc() ->
-    {ok, ADCX} = adc:start(?GPIO_VRx, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ok, ADCY} = adc:start(?GPIO_VRy, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ADCX, ADCY}.
+    ok = esp_adc:start(?GPIO_VRx),
+    ok = esp_adc:start(?GPIO_VRy),
+    {?GPIO_VRx, ?GPIO_VRy}.
 
 read_adc(ADC) ->
-    case adc:read(ADC) of
+    case esp_adc:read(ADC) of
         {ok, {Raw, _MilliVolts}} ->
             {ok, Raw};
         Error ->

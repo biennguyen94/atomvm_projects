@@ -1,5 +1,3 @@
-# Copyright 2022 Bien Nguyen <nguyennhubientdh94@gmail.com>
-
 include(${CMAKE_SOURCE_DIR}/version.cmake)
 
 if (ATOMVM_DEV)

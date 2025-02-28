@@ -52,14 +52,3 @@ Eg: When you push the Joystick of thump to RIGHT you can get the result is "Curr
 
 ![joystick_06](../joystick/image/joystick_06.png)
 
-**ATTENTION**
-
-You should check file rebar.config carefully. In this project we use the ADC protocol, so the config file will change. It could be rewrited as follows:
-
-
-        {erl_opts, [debug_info]}.
-        {deps, [
-            {atomvm_adc, {git, "https://github.com/atomvm/atomvm_adc.git", {branch, "master"}}}
-        ]}.
-        {plugins, [atomvm_rebar3_plugin]}.
-

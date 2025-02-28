@@ -16,8 +16,8 @@
 -define(GPIO_SLCK, 5).
 -define(GPIO_CS, 18).
 
--define(LOW_RANGE, 100).
--define(HIGH_RANGE, 4000).
+-define(LOW_RANGE, 700).
+-define(HIGH_RANGE, 3000).
 
 -define(DELAY_READ_ADC, 20).
 -define(MAX_SPEED, 200).
@@ -62,8 +62,8 @@ start() ->
 
     % Init Variable resitor and Spawn new process to handle read variable resistor
     % This process help us read variable resistor to change the speed of Snake
-    {ok, VRes} = adc:start(?GPIO_RESISTOR, [{attenuation, db_11}, {bit_width, bit_12}]),
-    spawn(?MODULE, variable_resistor, [self(), VRes, ?MAX_SPEED]),
+    ok = esp_adc:start(?GPIO_RESISTOR),
+    spawn(?MODULE, variable_resistor, [self(), GPIO_RESISTOR, ?MAX_SPEED]),
 
     % Spawn new process to handle blink the food
     spawn(?MODULE, blink_food, [Pid]),
@@ -184,12 +184,12 @@ write_register(SPI, Address, Data) ->
 %%% ADC part to control Joystick %%%
 
 setup_adc() ->
-    {ok, ADCX} = adc:start(?GPIO_VRx, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ok, ADCY} = adc:start(?GPIO_VRy, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ADCX, ADCY}.
+    ok = esp_adc:start(?GPIO_VRx),
+    ok = esp_adc:start(?GPIO_VRy),
+    {?GPIO_VRx, ?GPIO_VRy}.
 
 read_adc(ADC) ->
-    case adc:read(ADC) of
+    case esp_adc:read(ADC) of
         {ok, {Raw, _MilliVolts}} ->
             {ok, Raw};
         Error ->

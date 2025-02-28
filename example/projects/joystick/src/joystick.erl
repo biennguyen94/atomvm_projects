@@ -7,8 +7,8 @@
 -define(GPIO_VRy, 35).
 -define(GPIO_SW, 32).
 
--define(LOW_RANGE, 100).
--define(HIGH_RANGE, 4000).
+-define(LOW_RANGE, 700).
+-define(HIGH_RANGE, 3000).
 
 -define(DELAY_READ_ADC, 5).
 
@@ -18,10 +18,9 @@ start() ->
     loop(ADCX, ADCY).
 
 setup_adc() ->
-    {ok, ADC_X} = adc:start(?GPIO_VRx, [{attenuation, db_11}, {bit_width, bit_12}]),
-    %attenuation: reference volage and bit_width: resolution of bits.
-    {ok, ADC_Y} = adc:start(?GPIO_VRy, [{attenuation, db_11}, {bit_width, bit_12}]),
-    {ADC_X, ADC_Y}.
+    ok = esp_adc:start(?GPIO_VRx),
+    ok = esp_adc:start(?GPIO_VRy),    
+    {?GPIO_VRx, ?GPIO_VRy}.
 
 loop(ADCX, ADCY) ->
     {ok, X} = read_adc(ADCX),
@@ -42,7 +41,7 @@ loop(ADCX, ADCY) ->
     loop(ADCX, ADCY).
 
 read_adc(ADC) ->
-    case adc:read(ADC) of
+    case esp_adc:read(ADC) of
         {ok, {Raw, _MilliVolts}} ->
             {ok, Raw};
         Error ->

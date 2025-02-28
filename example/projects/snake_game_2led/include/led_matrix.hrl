@@ -26,7 +26,7 @@
 -define(GPIO_CS, 18).
 
 -define(LOW_RANGE, 700).
--define(HIGH_RANGE, 3900).
+-define(HIGH_RANGE, 3000).
 
 -define(DELAY_READ_ADC, 20).
 -define(MAX_SPEED, 200).

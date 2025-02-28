@@ -1,5 +1,3 @@
-# Copyright 2022 Bien Nguyen <nguyennhubientdh94@gmail.com>
-
 find_program(SPHINX_PATH sphinx-build)
 
 if (SPHINX_PATH)

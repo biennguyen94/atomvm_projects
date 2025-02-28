@@ -1,4 +1,3 @@
-.. Copyright 2022 Bien Nguyen <nguyennhubientdh94@gmail.com>
 ..
 
 .. AtomVM documentation master file
@@ -21,8 +20,6 @@ AtomVM includes many advanced features, including process spawning, monitoring, 
    :caption: Contents:
 
    atomvm_quickscan
-   atomvm_docker_basic_command
-   atomvm_doc_generation
    atomvm_wsl
    atomvm_step_by_step_deployment
 
