@@ -1,3 +1,5 @@
+# Copyright 2024 Bien Nguyen <nguyennhubientdh94@gmail.com>
+
 FROM ubuntu:noble
 
 # Common setup

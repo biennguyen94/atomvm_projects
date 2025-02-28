@@ -1,3 +1,5 @@
+# Copyright 2023 Bien Nguyen <nguyennhubientdh94@gmail.com>
+
 FROM ubuntu:jammy
 
 # Common setup

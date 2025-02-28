@@ -1,3 +1,5 @@
+# Copyright 2022 Bien Nguyen <nguyennhubientdh94@gmail.com>
+
 FROM ubuntu:focal
 
 # Common setup

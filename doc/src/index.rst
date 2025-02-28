@@ -21,12 +21,7 @@ AtomVM includes many advanced features, including process spawning, monitoring, 
    :caption: Contents:
 
    atomvm_quickscan
-   atomvm_build_adc_nif_image
-   atomvm_cherry-pick_PR
-   atomvm_build_atomvm
    atomvm_docker_basic_command
-   atomvm_useful_apt_check
-   atomvm_why_erlang_in_IoT
    atomvm_doc_generation
    atomvm_wsl
    atomvm_step_by_step_deployment
