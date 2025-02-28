@@ -79,15 +79,6 @@ git clone --branch 3.20.0 --recursive https://github.com/erlang/rebar3.git rebar
 
 ENV PATH $PATH:/root/.cache/rebar3/bin
 
-# WORKDIR /tools
-
-# #DEK network needs following commands to clone github
-# #note that DEKVN-CA.crt needs to be located in docker/20.04 folder
-# #RUN apt-get --no-install-recommends install -y ca-certificates
-# #ADD DEKVN-CA.crt /usr/local/share/ca-certificates/foo.crt
-# #RUN chmod 644 /usr/local/share/ca-certificates/foo.crt && update-ca-certificates
-
-
 # Get back to root directory
 WORKDIR /root
 
