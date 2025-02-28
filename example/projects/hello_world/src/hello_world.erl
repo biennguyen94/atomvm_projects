@@ -2,4 +2,8 @@
 -export([start/0]).
 
 start() ->
-    io:format("Hello World~n").
+    loop().
+loop() ->
+    io:format("Hello World~n"),
+    timer:sleep(1000),
+    loop().

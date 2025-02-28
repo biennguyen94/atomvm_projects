@@ -12,7 +12,7 @@ docker build --network host -t bien_atomvm.test .
 
 Deploy docker image to container
 ```
-docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it biennguyen94/atomvm:ubuntu20_04_v3 bash
+docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:ubuntu24_04_v1 bash
 docker run --privileged -v /dev/:/dev/ --name bien_atomvm -it bien_atomvm.test bash
 ```
 
@@ -89,12 +89,12 @@ docker exec -it bien_atomvm bash
 Clone repo
 ```
 cd /tools/
-git clone https://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@github.com/biennguyen94/atomvm_basic_projects.git
+git clone https://github.com/biennguyen94/atomvm_basic_projects.git
 ```
 
 Build application source code to .avm
 ```
-cd /tools/atomvm_basic_projects/example/2_blinky/
+cd /tools/atomvm_basic_projects/example/projects/hello_world/
 rebar3 packbeam
 ```
 
@@ -110,7 +110,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     -u --flash_mode dio --flash_freq 40m \
     --flash_size detect \
     0x210000 \
-    _build/default/lib/blinky.avm
+    _build/default/lib/hello_world.avm
 ```
 
 Open minicom for debugging
@@ -119,7 +119,6 @@ minicom -D /dev/ttyUSB0
 ```
 
 # Note
-* I only genarate Git personal access token in 30 days, so when it expires you can't clone atomvm_basic_projects repo, please let me know, I will provide a new token.
 * minicom and flash .avm are using same a USB device port, so note that whenever you flash .avm, you must close minicom.
 
 # Refer
