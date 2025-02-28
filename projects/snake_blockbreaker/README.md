@@ -2,4 +2,6 @@
 
 Welcome to the snake_blockbreaker AtomVM application.
 
-For informtion about how to build and flash this application, see the [`atomvm_rebar3_plugin`](https://github.com/atomvm/atomvm_rebar3_plugin) Github repository.
+This project is just a combination of block_breaker_2led and snake_game_2led. For more details, you can refer README.md of block_breaker_2led and snake_game_2led
+
+Note: Hardware and Schema are the same as block_breaker_2led and snake_game_2led

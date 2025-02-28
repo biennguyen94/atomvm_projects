@@ -4,7 +4,7 @@
 -define(Motor_int1,19).
 -define(Motor_int2,21).
 -define(En_A,15).
--define (En_B,2).
+-define(En_B,2).
 
 init() ->
     gpio:set_pin_mode(?Motor_int1,output),

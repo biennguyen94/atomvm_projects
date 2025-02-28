@@ -150,7 +150,7 @@ get_temp_value(Temp) ->
     (Temp - ?TEMP_OFFSET) * ?TEMP_SENS + 21.
 
 i2c_init() ->
-    i2c:open([{scl_io_num, ?GPIO_SCL}, {sda_io_num, ?GPIO_SDA}, {i2c_clock_hz, ?I2C_BASE_FREQ}]).
+    i2c:open([{scl, ?GPIO_SCL}, {sda, ?GPIO_SDA}, {clock_speed_hz, ?I2C_BASE_FREQ}]).
 
 mpu_config(I2C) ->
     mpu_send_command(I2C, ?ACC_CONFIG_ADDR, ?ACC_FULL_SCALE_2_G),

@@ -237,7 +237,7 @@ terminate(_Reason, _State) ->
 %%% LCD Part %%%
 
 i2c_init() ->
-    i2c:open([{scl_io_num, ?GPIO_SCL}, {sda_io_num, ?GPIO_SDA}, {i2c_clock_hz, ?I2C_BASE_FREQ}]).
+    i2c:open([{scl, ?GPIO_SCL}, {sda, ?GPIO_SDA}, {clock_speed_hz, ?I2C_BASE_FREQ}]).
 
 lcd_send_command(I2C, Command) ->
     DataU = Command band 16#F0,

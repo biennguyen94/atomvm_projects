@@ -58,7 +58,7 @@ read(I2C) ->
     read(I2C).
 
 i2c_init() ->
-    i2c:open([{scl_io_num, ?GPIO_SCL}, {sda_io_num, ?GPIO_SDA}, {i2c_clock_hz, ?BASE_FREQ}]).
+    i2c:open([{scl, ?GPIO_SCL}, {sda, ?GPIO_SDA}, {clock_speed_hz, ?BASE_FREQ}]).
 
 mpu_config(I2C) ->
     mpu_send_command(I2C, ?ACC_CONFIG_ADDR, ?ACC_FULL_SCALE_16_G),
