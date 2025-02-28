@@ -1,20 +1,27 @@
 # Basic project for ESP32 (AtomVM)
 ## Trees
-* atomvm_image: contains some useful available built AtomVM images
-* doc: contains all useful documents
-* docker: contains all dockers images with all packages (lib, esp, ..) built for different Ubuntu version and sphinx server
-* example: contain all periperals demo
-* projects: contain all projects
+* atomvm_image: contains available built AtomVM images
+* doc: contains useful documents
+* docker: contains dockers images with all packages (lib, esp, ..) built for different Ubuntu versions
+* example: contain periperals demo
+* projects: contain projects
 
 ## Deployment and Flashing an application to ESP32
 ### Deploy docker container environment
 - Pull docker image:
   `docker pull biennguyen94/atomvm:ubuntu24_04_v1`
+- Or optionally, you can build docker image by yourself:
+  ```
+  cd /tools/atomvm_basic_projects/docker/24.04 &&\
+  docker build --network host -t <image_name> .
+  ```
 - Deploy docker image to container:
   `docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:ubuntu24_04_v1 bash`
+
+  Note: if you pull image from my docker hub, <image_name> will be biennguyen94/atomvm:ubuntu24_04_v1 as above command, in case you build it by yourself, pls adapt it to yours
 - Access to container:
   `docker exec -it bien_atomvm bash`
-- Add needed PATH:
+- Add needed PATHs:
   ```
   export PATH="$PATH:/root/26.2.5.5/.cache/rebar3/bin" &&\
   . $IDF_PATH/export.sh
@@ -23,7 +30,7 @@
 ### Erase and Flash .img to ESP32
 - Access to container
   `docker exec -it bien_atomvm bash`
-- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if we can see `/dev/ttyUSB0`, then we are success to connect ESP32 to our container
+- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to our container
 - Clone repo
   ```
   cd /tools/ &&\
@@ -48,12 +55,12 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     /tools/atomvm_basic_projects/atomvm_image/AtomVM-esp32-v0.6.5/AtomVM-esp32-v0.6.5.img
 ```
 
-### Build and flash an application to ESP32
-- Whenever you have .img is already flashed to ESP32, you can do following steps to build and flash applications.
+### Build and flash an application (.avm) to ESP32
+- Whenever you have an .img is already flashed to ESP32, you can do following steps to build and flash applications.
 - Access to container
   `docker exec -it bien_atomvm bash`
 - Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if we can see `/dev/ttyUSB0`, then we are success to connect ESP32 to our container
-- Build an application source code (.avm)
+- Build an erlang application (.avm)
   ```
   cd /tools/atomvm_basic_projects/example/hello_world/ &&\
   rebar3 packbeam
@@ -75,5 +82,4 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 - Open minicom for debugging
   `minicom -D /dev/ttyUSB0`
 
-Note: minicom and flashing an .avm are using same a USB device port, so note that whenever you flash .avm, you must close minicom.
-
+Note: minicom and flashing an .avm are using a same USB device port, so note that whenever you flash an .avm, you must close minicom.

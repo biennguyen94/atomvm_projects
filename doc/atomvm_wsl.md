@@ -1,4 +1,7 @@
 # WSL
+```
+Note: this doc would have something not up to date since 2023, pls adapt.
+```
 ## Install WSL
 * Search for Command Prompt, right-click the top result, and select the Run as administrator option.
 * wsl --install

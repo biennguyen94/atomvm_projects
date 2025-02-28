@@ -1,10 +1,13 @@
 # AtomVM overview
+```
+Note: this doc would have something not up to date (since 2023) with latest supported AtomVM, pls go directly to https://atomvm.net/ for more information.
+```
 ## Requirements
-	- A computer running MacOS or Linux (Windows support is not currently supported);
+	- A computer running MacOS or Linux (Windows support is not currently supported, but in Windows, we can use WSL);
 	- An ESP32 module with a USB/UART connector (typically part of an ESP32 development board);
 	- A USB cable capable of connecting the ESP32 module or board to your development machine (laptop or PC);
 	- The esptool program (https://github.com/espressif/esptool), for flashing the AtomVM image and AtomVM programs;
-	- An Erlang/OTP release (21, 22, or 23);
+	- An Erlang/OTP release (21, 22, or 23, ...);
 	- A serial console program, such as minicom or screen, so that you can view console output from your AtomVM application;
 	- For Erlang programs, rebar3;
 	- Manage multiple language runtime versions on a per-project basis, asdf
@@ -52,9 +55,9 @@
 Typically involved two steps:
 * Connecting the ESP32 device;
 * Deploying the AtomVM virtual machine;
-* Deploying an AtomVM application (typically an iterative process)	
+* Deploying an AtomVM application (typically an iterative process)
 
-	
+
 ### Deploying the AtomVM virtual machine
 	* First erasing any existing applications on the ESP32 device:
 		shell$ esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
@@ -134,8 +137,8 @@ The typical compile-test-debug cycle can be summarized in the following steps:
 	* Write application
 	* Deploy application to device
 	* Test/Debug/Fix application
-	* Repeat	
-	
+	* Repeat
+
 ## PackBEAM tool
 The PackBEAM tool is a command-line application that is to build Packbeam files and deploy then to your device of choice
 ```
@@ -165,12 +168,9 @@ Any BEAM files that export a start/0 function will contain an asterisk (*) in th
 APIs:
 https://doc.atomvm.net/apidocs/erlang/eavmlib/index.html
 
-
 esp-idf:
 https://github.com/espressif/esp-idf
 
-
-	
 reading/writing Gyro/Acc value for MPU6050:
 https://howtomechatronics.com/tutorials/arduino/arduino-and-mpu6050-accelerometer-and-gyroscope-tutorial/
 
