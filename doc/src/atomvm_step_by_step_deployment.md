@@ -94,7 +94,7 @@ git clone https://github.com/biennguyen94/atomvm_basic_projects.git
 
 Build application source code to .avm
 ```
-cd /tools/atomvm_basic_projects/example/projects/hello_world/
+cd /tools/atomvm_basic_projects/example/hello_world/
 rebar3 packbeam
 ```
 

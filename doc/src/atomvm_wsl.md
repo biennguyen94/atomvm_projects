@@ -56,7 +56,7 @@ usbipd wsl attach --busid 2-2
 
 ## Copy file from WSL to Container
 ```
-docker cp /tools/atomvm_basic_projects/example/15_snake_game/src/snake_game.erl cb920e4dc7a0:/tools/atomvm_basic_projects/example/15_snake_game/src/snake_game.erl
+docker cp /tools/atomvm_basic_projects/example/hello_world/src/hello_world.erl cb920e4dc7a0:/tools/atomvm_basic_projects/example/hello_world/src/hello_world.erl
 ```
 
 ## Reference

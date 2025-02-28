@@ -3,7 +3,8 @@
 * atomvm_image: contains some useful available built AtomVM images
 * doc: contains all useful documents
 * docker: contains all dockers images with all packages (lib, esp, ..) built for different Ubuntu version and sphinx server
-* example: contain all basic applications and projects
+* example: contain all periperals demo
+* projects: contain all projects
 
 ## Deployment and Flashing an application to ESP32
 ### Deploy docker container environment
@@ -54,7 +55,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 - Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if we can see `/dev/ttyUSB0`, then we are success to connect ESP32 to our container
 - Build an application source code (.avm)
   ```
-  cd /tools/atomvm_basic_projects/example/projects/hello_world/ &&\
+  cd /tools/atomvm_basic_projects/example/hello_world/ &&\
   rebar3 packbeam
   ```
 - Flash .avm to ESP32
