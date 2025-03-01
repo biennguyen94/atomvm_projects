@@ -46,21 +46,20 @@ The example result when adjusting the range slider will be shown below.
 
 **Setting the low bright level:**
 
-![](https://i.ibb.co/p30Bfr8/Microsoft-Teams-image-3.jpg)
+
 
 - With the above image, the value of Duty Cycle is 20%.
 - The bright level of led is LOW(20%) and minicom get the message when pressing the "Save" button (check the images below).
 
-![](https://i.ibb.co/TkN300r/Microsoft-Teams-image-1.png[/img][/url])
-![](https://i.ibb.co/s6r86qy/Microsoft-Teams-image-5.jpg[/img][/url])
+
+
 
 
 **Setting the high bright level:**
 
-![](https://i.ibb.co/pz7cNXk/Microsoft-Teams-image-4.jpg[/img][/url])
+
 
 - The value of Duty Cycle on webserver is 100%.
 - The bright level of led is HIGHEST (100%) and minicom get the message when pressing the "Save" button (check the images below).
 
-![](https://i.ibb.co/D7WJGzK/Microsoft-Teams-image-2.png[/img][/url])
-![](https://i.ibb.co/NCy5SqJ/Microsoft-Teams-image-6.jpg[/img][/url])
+

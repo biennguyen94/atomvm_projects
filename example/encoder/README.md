@@ -1,6 +1,6 @@
 # `encoder` Application
 - Welcome to the **encoder** application.
-- This application will demonstrates reading encoder data.
+- This application will demonstrate reading encoder data.
 ## Understood encoder:
 ### What is an encoder?
 - **Encoders** are used in machinery for motion feedback and motion control.

@@ -2,7 +2,7 @@
 Welcome to the `control_led` AtomVM application.
 The `control_led` AtomVM application uses the `http_server` module to control ON/OF led (GPIO2) of ESP32.
 ## Usage
-> **IMPORTANT** before you compile and flash this example you need to edit `myssid` and `mypsk` in src/morse_server.erl to match your wireless network configuration.
+> **IMPORTANT** before you compile and flash this example you need to edit `myssid` and `mypsk` in src/config.erl to match your wireless network configuration.
 ```
     Config = [
        {sta, [
