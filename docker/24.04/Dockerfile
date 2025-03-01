@@ -40,7 +40,19 @@ RUN git checkout v0.6.5
 ## Build esp32 platform
 WORKDIR /tools/AtomVM/src/platforms/esp32
 RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py build
-ENV PATH $PATH
+ENV PATH /tools/esp/esp-idf/components/espcoredump:\
+/tools/esp/esp-idf/components/partition_table:\
+/tools/esp/esp-idf/components/app_update:\
+/root/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:\
+/root/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin:\
+/root/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:\
+/root/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/bin:\
+/root/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:\
+/root/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin:\
+/root/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:\
+/root/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/bin:\
+/root/.espressif/python_env/idf5.3_py3.12_env/bin:\
+/tools/esp/esp-idf/tools:$PATH
 
 # Install erlang OTP 25.0 (we need to install many deps in this way!)
 # WORKDIR /root

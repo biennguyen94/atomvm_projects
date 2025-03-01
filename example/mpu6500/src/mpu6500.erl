@@ -43,7 +43,7 @@ start() ->
 
 % Read value after 3s
 read(I2C) ->
-    Val = mpu_read_data(I2C),
+    {ok, Val} = mpu_read_data(I2C),
     % Extract bit with format <<Acc:48, Temp:16, Gyro:48>>
     <<AccX:16/integer-signed, AccY:16/integer-signed, AccZ:16/integer-signed,
     Temp:16,

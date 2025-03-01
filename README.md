@@ -21,21 +21,11 @@
   Note: if you pull image from my docker hub, <image_name> will be biennguyen94/atomvm:ubuntu24_04_v1 as above command, in case you build it by yourself, pls adapt it to yours
 - Access to container:
   `docker exec -it bien_atomvm bash`
-- Add needed PATHs:
-  ```
-  export PATH="$PATH:/root/26.2.5.5/.cache/rebar3/bin" &&\
-  . $IDF_PATH/export.sh
-  ```
 
 ### Erase and Flash .img to ESP32
 - Access to container
   `docker exec -it bien_atomvm bash`
 - Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to the container
-- Clone repo
-  ```
-  cd /tools/ &&\
-  git clone https://github.com/biennguyen94/atomvm_basic_projects.git
-  ```
 - Erase flashed .img:
  ```
  python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
@@ -60,6 +50,11 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 - Access to container
   `docker exec -it bien_atomvm bash`
 - Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to the container
+- Clone repo
+  ```
+  cd /tools/ &&\
+  git clone https://github.com/biennguyen94/atomvm_basic_projects.git
+  ```
 - Build an erlang application (.avm)
   ```
   cd /tools/atomvm_basic_projects/example/hello_world/ &&\
@@ -79,6 +74,8 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     0x210000 \
     _build/default/lib/hello_world.avm
     ```
+
+Note: if you encouter this error `/usr/bin/python3: No module named esptool` when flashing an .avm, you can fix it by: `. $IDF_PATH/export.sh`
 - Open minicom for debugging
   `minicom -D /dev/ttyUSB0`
 
