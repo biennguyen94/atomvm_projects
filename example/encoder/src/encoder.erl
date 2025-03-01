@@ -24,8 +24,8 @@ loop(Pulse) ->
     gpio:digital_write(?Motor_int1,high),
     gpio:digital_write(?Motor_int2,low),
     receive
-        {gpio_interrupt,Pin} ->
-            Pulse_new= Pulse+1,
+        {gpio_interrupt, _Pin} ->
+            Pulse_new = Pulse+1,
             io:format("Pulse is ~p~n", [Pulse_new])
     end,
     loop(Pulse_new).

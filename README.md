@@ -30,7 +30,7 @@
 ### Erase and Flash .img to ESP32
 - Access to container
   `docker exec -it bien_atomvm bash`
-- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to our container
+- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to the container
 - Clone repo
   ```
   cd /tools/ &&\
@@ -59,7 +59,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 - Whenever you have an .img is already flashed to ESP32, you can do following steps to build and flash applications.
 - Access to container
   `docker exec -it bien_atomvm bash`
-- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if we can see `/dev/ttyUSB0`, then we are success to connect ESP32 to our container
+- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to the container
 - Build an erlang application (.avm)
   ```
   cd /tools/atomvm_basic_projects/example/hello_world/ &&\

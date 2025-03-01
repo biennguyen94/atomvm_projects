@@ -40,7 +40,7 @@ RUN git checkout v0.6.5
 ## Build esp32 platform
 WORKDIR /tools/AtomVM/src/platforms/esp32
 RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py build
-
+ENV PATH $PATH
 
 # Install erlang OTP 25.0 (we need to install many deps in this way!)
 # WORKDIR /root
@@ -54,7 +54,7 @@ RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py build
 
 # Install Erlang OTP 26 and rebar
 WORKDIR /root
-RUN apt-get -qq install curl
+RUN apt-get -qq update && apt-get -qq install curl
 RUN apt-get -qq install libncurses5-dev libncursesw5-dev
 
 RUN curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl &&\
