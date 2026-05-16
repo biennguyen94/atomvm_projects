@@ -64,6 +64,11 @@ ENV PATH /tools/esp/esp-idf/components/espcoredump:\
 #     apt-key add erlang_solutions.asc &&\
 #     apt-get install esl-erlang -y
 
+# https://doc.atomvm.org/latest/release-notes.html
+# https://prying.io/technical/2018/09/18/using-kerl-and-kiex-for-version-management.html
+# https://github.com/kerl/kerl
+# https://github.com/taylor/kiex
+
 # Install Erlang OTP 26 and rebar
 WORKDIR /root
 RUN apt-get -qq update && apt-get -qq install curl
@@ -82,6 +87,12 @@ git clone --branch 3.24.0 --recursive https://github.com/erlang/rebar3.git rebar
     ./rebar3 local install
 
 ENV PATH $PATH:/root/26.2.5.5/.cache/rebar3/bin
+
+RUN \curl -sSL https://raw.githubusercontent.com/taylor/kiex/master/install | bash -s &&\
+echo "test -s \"/root/.kiex/scripts/kiex\" && source \"/root/.kiex/scripts/kiex\"" >> ~/.bashrc &&\
+    kiex install 1.15.8 &&\
+    kiex use 1.15.8-26 &&\
+    kiex default 1.15.8-26
 
 # Get back to root directory
 WORKDIR /root

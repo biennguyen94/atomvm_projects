@@ -45,7 +45,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     /tools/atomvm_basic_projects/atomvm_image/AtomVM-esp32-v0.6.5/AtomVM-esp32-v0.6.5.img
 ```
 
-### Build and flash an application (.avm) to ESP32
+### Erlang - Build and flash an application (.avm) to ESP32
 - Whenever you have an .img is already flashed to ESP32, you can do following steps to build and flash applications.
 - Access to container
   `docker exec -it bien_atomvm bash`
@@ -60,7 +60,9 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
   cd /tools/atomvm_basic_projects/example/hello_world/ &&\
   rebar3 packbeam
   ```
-- Flash .avm to ESP32
+  or
+  `rebar3 atomvm packbeam`
+- Flash .avm onto ESP32
   ```
   python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 \
@@ -73,9 +75,37 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --flash_size detect \
     0x210000 \
     _build/default/lib/hello_world.avm
-    ```
+  ```
+  or
+  `rebar3 atomvm esp32_flash --port /dev/ttyUSB0`
 
-Note: if you encouter this error `/usr/bin/python3: No module named esptool` when flashing an .avm, you can fix it by: `. $IDF_PATH/export.sh`
+Note: if you encounter this error `/usr/bin/python3: No module named esptool` when flashing an .avm, you can fix it by: `. $IDF_PATH/export.sh`
+- Open minicom for debugging
+  `minicom -D /dev/ttyUSB0`
+
+Note: minicom and flashing an .avm are using a same USB device port, so note that whenever you flash an .avm, you must close minicom.
+
+### Elixir - Build and flash an application (.avm) to ESP32
+- Whenever you have an .img is already flashed to ESP32, you can do following steps to build and flash applications.
+- Access to container
+  `docker exec -it bien_atomvm bash`
+- Connect ESP32 to computer via USB, check by command in container: `ls /dev/tty*`, if you can see `/dev/ttyUSB0`, then you are success to connect ESP32 to the container
+- Clone repo
+  ```
+  cd /tools/ &&\
+  git clone https://github.com/biennguyen94/atomvm_basic_projects.git
+  ```
+- Build an erlang application (.avm)
+  ```
+  cd /tools/atomvm_basic_projects/example/hello_world/ &&\
+  mix deps.get && mix atomvm.packbeam
+  ```
+- Flash .avm onto ESP32
+  ```
+  mix atomvm.esp32.flash --port /dev/ttyUSB0
+  ```
+
+Note: if you encounter this error `/usr/bin/python3: No module named esptool` when flashing an .avm, you can fix it by: `. $IDF_PATH/export.sh`
 - Open minicom for debugging
   `minicom -D /dev/ttyUSB0`
 
