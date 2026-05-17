@@ -1,16 +1,11 @@
 <!---
-  Copyright 2026 Masatoshi Nishiguchi
+  Copyright 2026 Bien Nguyen <nguyennhubientdh94@gmail.com>
 
   SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 -->
 
-# `EspRtcMemory` Application
+# Esp32Heart (Elixir)
 
-Welcome to the `EspRtcMemory` AtomVM application.
+This is the Elixir port of the `esp32_heart` Erlang application.
 
-The `EspRtcMemory` AtomVM application uses ESP32 RTC slow memory to record the number of times the device has restarted.
-If no value has been stored in RTC slow memory yet, the counter is initialized to 0. The device will then sleep for 10 seconds and restart. After each restart, the counter is incremented and stored back to RTC slow memory.
-
-For more information about programming on the AtomVM platform, see the [AtomVM Programmers Guide](https://doc.atomvm.org/latest/programmers-guide.html).
-
-For general information about building and executing Elixir AtomVM example programs, see the Elixir example program [README](../README.md).
+For a description of this application, please refer to the corresponding [Erlang README](../../erlang/esp32_heart/README.md).
