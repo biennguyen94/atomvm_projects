@@ -25,7 +25,7 @@ defmodule Joystick do
 
   @low_range 700
   @high_range 3000
-  @delay_read_adc 5
+  @delay_read_adc 1000
 
   def start do
     {adcx, adcy} = setup_adc()
@@ -48,13 +48,13 @@ defmodule Joystick do
         IO.puts("Current position is: LEFT")
 
       y < @low_range ->
-        IO.puts("Current position is: BOTTOM")
+        IO.puts("Current position is: TOP")
 
       x > @high_range ->
         IO.puts("Current position is: RIGHT")
 
       y > @high_range ->
-        IO.puts("Current position is: TOP")
+        IO.puts("Current position is: BOTTOM")
 
       true ->
         IO.puts("Current position is: MIDDLE")
@@ -75,3 +75,30 @@ defmodule Joystick do
     end
   end
 end
+
+### Using ADCnifs works too
+
+# defmodule Joystick do
+#   # suppress warnings when compiling the VM
+#   @compile {:no_warn_undefined, [Esp.ADC]}
+#   @pin 33
+
+#   def start() do
+#     IO.puts("Testing ADC on pin #{@pin}")
+#     {:ok, unit} = Esp.ADC.init()
+#     {:ok, chan} = Esp.ADC.acquire(@pin, unit, :bit_max, :db_12)
+#     loop(@pin, unit, chan)
+#   end
+
+#   defp loop(pin, unit, chan) do
+#     case Esp.ADC.sample(chan, unit, [:raw, :voltage, {:samples, 64}]) do
+#       {:ok, {raw, mv}} ->
+#         IO.puts("Pin #{pin} value = #{raw}, millivolts = #{mv}")
+#       error ->
+#         IO.puts("Error taking ADC sample from pin #{pin}: #{error}")
+#     end
+#     Process.sleep(500)
+#     loop(pin, unit, chan)
+#   end
+
+# end
