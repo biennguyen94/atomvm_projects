@@ -42,7 +42,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     -u --flash_mode dio --flash_freq 40m \
     --flash_size detect \
     0x1000 \
-    /tools/atomvm_basic_projects/atomvm_image/AtomVM-esp32-v0.6.5/AtomVM-esp32-v0.6.5.img
+    /tools/atomvm_basic_projects/atomvm_image/AtomVM-esp32-elixir-v0.7.0-alpha.1.img
 ```
 
 ### Erlang - Build and flash an application (.avm) to ESP32
@@ -57,7 +57,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
   ```
 - Build an erlang application (.avm)
   ```
-  cd /tools/atomvm_basic_projects/example/hello_world/ &&\
+  cd /tools/atomvm_basic_projects/example/erlang/hello_world/ &&\
   rebar3 packbeam
   ```
   or
@@ -97,7 +97,7 @@ Note: minicom and flashing an .avm are using a same USB device port, so note tha
   ```
 - Build an erlang application (.avm)
   ```
-  cd /tools/atomvm_basic_projects/example/hello_world/ &&\
+  cd /tools/atomvm_basic_projects/example/elixir/HelloWorld &&\
   mix deps.get && mix atomvm.packbeam
   ```
 - Flash .avm onto ESP32
