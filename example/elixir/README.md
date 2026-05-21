@@ -12,5 +12,6 @@
 | LEDC_Example    | ✅    |
 | LEDC_Example2   | ❌    |
 | Mpu6500         | ✅    |
+| Mpu6500WebTemp  | ✅    |
 | hello_atomvm_disterl_wifi         | ✅    |
 
