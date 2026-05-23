@@ -22,7 +22,7 @@ defmodule BlockBreaker2Led do
   use GenServer
   use Bitwise
 
-  @low_range 700
+  @low_range 800
   @high_range 3000
 
   @gpio_vrx 34
@@ -710,10 +710,13 @@ defmodule BlockBreaker2Led do
   @impl true
   def init(_) do
     {:ok, spi} = init_max7219(@spisettings)
-    init_sw_interrupt()
+    GPIO.set_pin_mode(@gpio_sw, :input)
+    GPIO.set_pin_pull(@gpio_sw, :up)
+    gpio = GPIO.open()
+    GPIO.set_int(gpio, @gpio_sw, :rising)
     new_proc = spawn(__MODULE__, :welcome_block_breaker_game_process, [self(), 0])
     state = %__MODULE__{spi: spi, goverproc: new_proc, isgameover: true}
-    IO.puts("Init SPI and MAX7219 OK #{inspect(@cross_bar)}")
+    :io.format("Init SPI and MAX7219 OK ~p ~n", [@cross_bar])
     {:ok, state}
   end
 
@@ -1151,13 +1154,6 @@ defmodule BlockBreaker2Led do
   end
 
   # Joystick part
-
-  defp init_sw_interrupt do
-    GPIO.set_pin_mode(@gpio_sw, :input)
-    GPIO.set_pin_pull(@gpio_sw, :up)
-    gpio = GPIO.start()
-    GPIO.set_int(gpio, @gpio_sw, :rising)
-  end
 
   defp setup_adc do
     :ok = :esp_adc.start(@gpio_vrx)

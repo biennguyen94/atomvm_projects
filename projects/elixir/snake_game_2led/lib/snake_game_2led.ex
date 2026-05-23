@@ -20,7 +20,7 @@
 
 defmodule SnakeGame2Led do
   use GenServer
-  import Bitwise
+  use Bitwise
 
   @no_op 0x0
   @digit_0 0x1
@@ -47,7 +47,7 @@ defmodule SnakeGame2Led do
   @gpio_sclk 5
   @gpio_cs 18
 
-  @low_range 700
+  @low_range 800
   @high_range 3000
 
   @delay_read_adc 20
@@ -607,7 +607,10 @@ defmodule SnakeGame2Led do
 
   def init(_) do
     {:ok, spi} = init_max7219(@spisettings)
-    init_sw_interrupt()
+    GPIO.set_pin_mode(@gpio_sw, :input)
+    GPIO.set_pin_pull(@gpio_sw, :up)
+    gpio = GPIO.open()
+    GPIO.set_int(gpio, @gpio_sw, :rising)
     IO.puts("Init SPI and MAX7219 OK\n")
     new_proc = spawn(__MODULE__, :welcome_snake_game_process, [self(), 0])
     new_state = %__MODULE__{spi: spi, gameover: true, goverproc: new_proc}
@@ -756,13 +759,6 @@ defmodule SnakeGame2Led do
       :device_1 -> {new_data, data2}
       :device_2 -> {data1, new_data}
     end
-  end
-
-  defp init_sw_interrupt() do
-    GPIO.set_pin_mode(@gpio_sw, :input)
-    GPIO.set_pin_pull(@gpio_sw, :up)
-    gpio = GPIO.start()
-    GPIO.set_int(gpio, @gpio_sw, :rising)
   end
 
   defp setup_adc() do

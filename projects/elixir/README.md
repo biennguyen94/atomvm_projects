@@ -12,13 +12,13 @@ The applications in this directory are Elixir ports of the corresponding Erlang 
 
 | Project | esp32 |
 |---------|-------|
-| block_breaker_2led | ❌ |
+| block_breaker_2led | ✅ |
 | calculator | ❌ |
 | car_project | ❌ |
 | hour_glass | ✅ |
 | self_balance_robot | ❌ |
 | snake_blockbreaker | ✅ |
-| snake_game_2led | ❌ |
+| snake_game_2led | ✅ |
 
 For descriptions of each application, please refer to the README in the corresponding Erlang directory:
 
