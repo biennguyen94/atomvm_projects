@@ -19,8 +19,83 @@
 #
 
 defmodule SnakeGame2Led do
+  @moduledoc """
+  Snake Game running on AtomVM, using 2 MAX7219 LED matrices controlled via SPI.
+
+  ## Overview
+  This module is a GenServer managing the full snake game logic displayed on two 8x8 LED matrix
+  modules (MAX7219), combined into a single 8x16 display. The player controls the snake using an
+  analog joystick (ADC via GPIO), eats food to increase score and length. Game speed is adjustable
+  via a variable resistor.
+
+  ## Features
+  - Display on 2 daisy-chained MAX7219 LED matrices (8x16 pixels)
+  - 2-axis joystick control (VRx, VRy) + push button (SW)
+  - Speed adjustment via remote DistErl command (`:snake_speed` registered process)
+  - Blinking food
+  - Border wrapping – snake crosses from one LED to the other
+  - Score display as 7-segment digits on LED matrix at game over
+  - Scrolling text effects "SNAKE GAME" and "GAME OVER"
+  - Random food that never spawns on the snake body
+
+  ## Joystick thresholds
+  - `low_range = 800` – lower threshold
+  - `high_range = 3000` – upper threshold
+  - ADC value range 0–4095 (12-bit)
+
+  ## Speed
+  - Default speed: 200ms per tick
+  - Speed is controlled remotely via DistErl: send `{:set_speed, milliseconds}` to
+    `{:snake_speed, target_node}` from any node sharing the cookie `"AtomVM"`
+
+  ## GPIO pinout
+  ### Joystick
+  - VRx (ADC) → GPIO34
+  - VRy (ADC) → GPIO35
+  - SW (push button) → GPIO32 (input, pull-up, rising edge interrupt)
+
+  ### SPI (MAX7219)
+  - MISO → GPIO19
+  - MOSI → GPIO27
+  - SCLK → GPIO5
+  - CS → GPIO18
+
+  ## Key module attributes
+  - `@head` – initial snake head position: `{0, {2, 4}}` (LED 0, row 2, col 4)
+  - `@body` – initial snake body: 2 segments
+  - `@snake_length` – initial length = 2
+  - `@direction` – initial movement direction: `{1, 0}` (right)
+
+  ## Bitmap data structure
+  Each 8x8 LED matrix is represented as an 8-entry map (keys are digit_0..digit_7 row numbers,
+  values are 8-bit bytes, each bit corresponding to a column). Both LEDs are stored as a tuple
+  `{data1, data2}`.
+
+  The game uses 3 sets of digit bitmaps:
+  - `@number_N` – 7-segment style 8x8 digits (used for score display)
+  - `@number_N_left` – left-side version (LED 0)
+  - `@number_N_right` – right-side version (LED 1)
+
+  ## Flow
+  1. `start/1` – initialize GenServer, spawn joystick process, enter main loop
+  2. `init/1` – setup GPIO, SPI, display "SNAKE GAME" welcome screen
+  3. Joystick button press → `handle_info(:gpio_interrupt)` → reset game
+  4. Main loop `loop/2` – send `:move` at current speed
+  5. `move_snake/1` – compute new position, check food collision, check self-collision
+  6. Game over → display score → return to welcome screen
+
+  ## GenServer messages
+  - Cast `{:change_direction, x, y}` – change snake direction
+  - Cast `:move` – advance snake one step
+  - Cast `{:display_game_over, times}` / `{:display_snake_game, times}` – text animation
+  - Cast `:turn_off_food` / `:turn_on_food` – food blinking
+  - Info `{:gpio_interrupt, pin}` – joystick button press
+  - Info `:stop_peripherals` – stop GPIO
+  - Info `:back_to_welcome` – return to welcome screen
+   - Message `{:newspeed, speed}` – speed update from DistErl speed control (remote)
+  """
   use GenServer
-  import Bitwise
+  use Bitwise
 
   @no_op 0x0
   @digit_0 0x1
@@ -40,7 +115,6 @@ defmodule SnakeGame2Led do
   @gpio_vrx 34
   @gpio_vry 35
   @gpio_sw 32
-  @gpio_resistor 33
 
   @gpio_miso 19
   @gpio_mosi 27
@@ -52,9 +126,7 @@ defmodule SnakeGame2Led do
 
   @delay_read_adc 20
   @max_speed 200
-  @min_speed 1000
   @blink_rate 200
-  @bit_resolution 4095
 
   @num_of_bits 8
   @device_name :device_1
@@ -596,11 +668,15 @@ defmodule SnakeGame2Led do
     joystick_pid = spawn(__MODULE__, :joystick, [pid, @gpio_vrx, @gpio_vry])
     GenServer.cast(pid, {:update_joystick_pid, joystick_pid})
     spawn(__MODULE__, :blink_food, [pid])
+    SnakeBlockbreaker.DistErl.register_loop(self())
     loop(pid, @max_speed)
   end
 
   def init(spi) do
-    init_sw_interrupt()
+    GPIO.set_pin_mode(@gpio_sw, :input)
+    GPIO.set_pin_pull(@gpio_sw, :up)
+    gpio = GPIO.open()
+    GPIO.set_int(gpio, @gpio_sw, :rising)
     IO.puts("Init SPI and MAX7219 OK\n")
     new_proc = spawn(__MODULE__, :welcome_snake_game_process, [self(), 0])
     new_state = %__MODULE__{spi: spi, gameover: true, goverproc: new_proc}
@@ -749,13 +825,6 @@ defmodule SnakeGame2Led do
       :device_1 -> {new_data, data2}
       :device_2 -> {data1, new_data}
     end
-  end
-
-  defp init_sw_interrupt() do
-    GPIO.set_pin_mode(@gpio_sw, :input)
-    GPIO.set_pin_pull(@gpio_sw, :up)
-    gpio = GPIO.start()
-    GPIO.set_int(gpio, @gpio_sw, :rising)
   end
 
   defp read_adc(adc) do
@@ -1065,34 +1134,6 @@ defmodule SnakeGame2Led do
     GenServer.cast(pid, :turn_on_food)
     :timer.sleep(@blink_rate)
     blink_food(pid)
-  end
-
-  def variable_resistor(parent, adc, previous_speed) do
-    {:ok, speed} = read_adc(adc)
-    map_speed = map_value(speed, 0, @bit_resolution, @max_speed, @min_speed)
-    is_change = is_not_in_range(previous_speed, map_speed)
-    if is_change do
-      send(parent, {:newspeed, map_speed})
-    end
-    new_speed =
-      if is_change do
-        map_speed
-      else
-        previous_speed
-      end
-    :timer.sleep(new_speed)
-    variable_resistor(parent, adc, new_speed)
-  end
-
-  defp is_not_in_range(pre_val, new_val) do
-    low = pre_val - 10
-    high = pre_val + 10
-    not (new_val >= low and new_val <= high)
-  end
-
-  defp map_value(value, in_low, in_high, out_low, out_high) do
-    res = (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low
-    round(res)
   end
 
   def loop(pid, pre_speed) do

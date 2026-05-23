@@ -19,8 +19,57 @@
 #
 
 defmodule SnakeBlockbreaker do
+  @moduledoc """
+  Game launcher / menu selector for Snake Game and Block Breaker on AtomVM, using 2 MAX7219 LED
+  matrices controlled via SPI.
+
+  ## Overview
+  This module is the parent GenServer that presents a game selection screen on two 8x8 LED matrix
+  modules (MAX7219). The player uses the joystick X-axis to choose between Snake Game (joystick
+  left) and Block Breaker (joystick right). Once selected, it spawns the corresponding game
+  module (`SnakeGame2Led` or `BlockBreaker2Led`) and passes the SPI handle.
+
+  ## Features
+  - Animated game selection screen with snake (LED 0) and breaker (LED 1) icons scrolling
+  - Joystick-based game selection (left = Snake, right = Block Breaker)
+  - Initializes 2 MAX7219 modules on separate SPI chip-select lines (CS=18 for device_1,
+    CS=23 for device_2 – note device_2 uses a different CS than the game modules)
+  - Configures both MAX7219: no decode, intensity 3, scan limit 8, shutdown off, test off
+
+  ## GPIO pinout
+  - VRx (ADC) → GPIO34 – used for game selection
+  - All other GPIO pins are configured but only VRx is used in this module
+
+  ### SPI configuration
+  - bus: MISO=19, MOSI=27, SCLK=5
+  - device_1: clock=1MHz, mode=0, CS=18, address_len=8
+  - device_2: clock=1MHz, mode=0, CS=23, address_len=8
+
+  Note: `SnakeGame2Led` and `BlockBreaker2Led` share the same SPI bus but use CS=18 for both
+  devices. This module uses CS=18 for device_1 and CS=23 for device_2.
+
+  ## Flow
+  1. `start/0` – initialize GenServer, start ADC, enter `select_game/2`
+  2. `init/1` – initialize SPI + both MAX7219 modules, spawn icon animation process
+  3. `select_game/2` – poll joystick ADC:
+     - ADC < 800 → start SnakeGame2Led
+     - ADC > 3000 → start BlockBreaker2Led
+     - Otherwise → sleep 100ms, retry
+  4. When a game ends, it sends `:game_over` cast → re-run selection animation + poll loop
+  5. `select_game1/2` – same as `select_game/2`, called after a game ends
+
+  ## Animation data
+  - `@select_game_snake` – 40-frame bitmap sequence for snake icon on LED 0
+  - `@select_game_breaker` – 40-frame bitmap sequence for breaker icon on LED 1
+  - Display process scrolls through both sequences in 8-frame steps every 800ms
+
+  ## GenServer messages
+  - Cast `:game_over` – return to game selection after a game ends
+  - Cast `{:display_select_game_flag, times}` – render current animation frame
+  - Info `{pid, :do_select_game}` – stop animation, send SPI handle back to caller
+  """
   use GenServer
-  import Bitwise
+  use Bitwise
 
   @no_op 0x0
   @digit_0 0x1
@@ -39,8 +88,6 @@ defmodule SnakeBlockbreaker do
 
   @gpio_vrx 34
   @gpio_vry 35
-  @gpio_sw 32
-  @gpio_resistor 33
 
   @gpio_miso 19
   @gpio_mosi 27
@@ -51,9 +98,6 @@ defmodule SnakeBlockbreaker do
   @high_range 3000
 
   @delay_read_adc 100
-  @max_speed 200
-  @min_speed 1000
-  @bit_resolution 4095
 
   @num_of_bits 8
 
@@ -166,6 +210,11 @@ defmodule SnakeBlockbreaker do
 
   def start do
     :erlang.system_flag(:schedulers_online, 2)
+    {:ok, _} = SnakeBlockbreaker.DistErl.start_link()
+    case SnakeBlockbreaker.WiFi.start_link() do
+      {:ok, _} -> :ok
+      {:error, _} -> IO.puts("wifi: not available, game runs without remote speed control")
+    end
     {:ok, pid} = GenServer.start(__MODULE__, [], name: :snake_blockbreaker)
     {adcx, _adcy} = setup_adc()
     select_game(pid, adcx)
@@ -233,7 +282,7 @@ defmodule SnakeBlockbreaker do
     end
   end
 
-  defp select_game1(pid, adcx) do
+  def select_game1(pid, adcx) do
     {:ok, x} = read_adc(adcx)
     cond do
       x < @low_range ->

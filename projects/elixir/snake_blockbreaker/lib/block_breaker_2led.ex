@@ -19,8 +19,87 @@
 #
 
 defmodule BlockBreaker2Led do
+  @moduledoc """
+  Block Breaker (Breakout) game running on AtomVM, using 2 MAX7219 LED matrices controlled via SPI.
+
+  ## Overview
+  This module is a GenServer managing a Breakout-style game displayed on two 8x8 LED matrix
+  modules (MAX7219), combined into a single 8x16 display. The player controls a paddle using an
+  analog joystick to bounce a ball and break all 32 blocks. Game speed is adjustable via a
+  variable resistor.
+
+  ## Features
+  - Display on 2 daisy-chained MAX7219 LED matrices (8x16 pixels)
+  - Paddle control via joystick X-axis (VRx)
+  - Speed adjustment via variable resistor (GPIO 33)
+  - 32 breakable blocks (16 per LED, rows 6 and 7, mirrored on both matrices)
+  - Ball bounces off walls, paddle, and blocks
+  - Paddle wraps across LED boundaries
+  - Ball direction randomizes on paddle edge hit
+  - Score display as 7-segment digits at game over / game win
+  - Scrolling text effects "BREAKER GAME", "GAME OVER", and "YOU WIN"
+  - Game over when ball falls below the paddle
+
+  ## Joystick thresholds
+  - `low_range = 800` – lower threshold (move paddle left)
+  - `high_range = 3000` – upper threshold (move paddle right)
+  - ADC value range 0–4095 (12-bit)
+
+  ## Speed
+  - `max_speed = 100` (fastest)
+  - `min_speed = 1000` (slowest)
+  - Variable resistor linearly maps ADC (0–4095) to range [100..1000]
+
+  ## GPIO pinout
+  ### Joystick & variable resistor
+  - VRx (ADC) → GPIO34
+  - VRy (ADC) → GPIO35 (unused in this game, kept for compatibility)
+  - SW (push button) → GPIO32 (input, pull-up, rising edge interrupt)
+  - Variable resistor (ADC) → GPIO33
+
+  ### SPI (MAX7219) – same pins as SnakeGame2Led
+  - MISO → GPIO19, MOSI → GPIO27, SCLK → GPIO5, CS → GPIO18
+
+  ## Key module attributes
+  - `@ball` – initial ball position: `{0, {7, 1}}` (LED 0, row 7, col 1)
+  - `@cross_bar` – initial paddle: 3 segments spanning `{0, {6,0}}`, `{0, {7,0}}`, `{1, {0,0}}`
+  - `@default_point` – 32 block positions (IDs 0–15 on LED 0, 16–31 on LED 1)
+  - `@max_point = 32` – total blocks to clear
+  - `@direction` – initial ball direction: `{-1, 1}`
+
+  ## Block layout
+  - Rows 6 and 7 on both LEDs (8 columns × 2 rows × 2 LEDs = 32 blocks)
+  - Blocks are stored as `{led_id, {row, col}}` tuples in the `@default_point` map
+
+  ## Flow
+  1. `start/1` – initialize GenServer, spawn joystick process, enter ball loop
+  2. `init/1` – setup GPIO, SPI, display "BREAKER GAME" welcome screen
+  3. Joystick button press → `handle_info(:gpio_interrupt)` → reset game
+  4. Main loop `ball/2` – send `:move_ball` at current speed
+  5. `handle_cast(:move_ball)` – move ball, check collisions with walls/paddle/blocks
+  6. `handle_cast({:move_cross_bar, direc})` – move paddle via joystick
+  7. All blocks cleared → game win animation → return to welcome
+  8. Ball falls below paddle → game over → display score → return to welcome
+
+  ## Collision logic
+  - Ball bounces off top (`y=7`), left (`x=0`/LED0), right (`x=7`/LED1) walls
+  - Ball hits paddle top (`y=1`) → various bounces depending on which paddle segment
+  - Ball hits block → block removed, score +1, ball reverses X direction
+  - Ball falls below paddle (`y=0`) → game over
+
+  ## GenServer messages
+  - Cast `{:move_cross_bar, direc}` – move paddle (-1 left, 1 right)
+  - Cast `:move_ball` – advance ball one step
+  - Cast `:reset_game` – initialize game state
+  - Cast `:update_game` – redraw all elements to LED
+  - Cast `{:display_game_over, times}` / `{:display_breaker_game, times}` / `{:display_game_win, times}` – text animation
+  - Info `{:gpio_interrupt, pin}` – joystick button press
+  - Info `:stop_peripherals` – stop GPIO
+  - Info `:back_to_welcome` – return to welcome screen
+  - Message `{:newspeed, speed}` – speed update from variable resistor
+  """
   use GenServer
-  import Bitwise
+  use Bitwise
 
   @no_op 0x0
   @digit_0 0x1
@@ -696,7 +775,10 @@ defmodule BlockBreaker2Led do
   end
 
   def init(spi) do
-    init_sw_interrupt()
+    GPIO.set_pin_mode(@gpio_sw, :input)
+    GPIO.set_pin_pull(@gpio_sw, :up)
+    gpio = GPIO.open()
+    GPIO.set_int(gpio, @gpio_sw, :rising)
     new_proc = spawn(__MODULE__, :welcome_block_breaker_game_process, [self(), 0])
     state = %__MODULE__{spi: spi, goverproc: new_proc, isgameover: true}
     :io.format("Init SPI and MAX7219 OK ~p ~n", [@cross_bar])
@@ -1097,13 +1179,6 @@ defmodule BlockBreaker2Led do
         {new_data, result}
       end
     end
-  end
-
-  defp init_sw_interrupt() do
-    GPIO.set_pin_mode(@gpio_sw, :input)
-    GPIO.set_pin_pull(@gpio_sw, :up)
-    gpio = GPIO.start()
-    GPIO.set_int(gpio, @gpio_sw, :rising)
   end
 
   defp read_adc(adc) do

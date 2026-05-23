@@ -75,7 +75,7 @@ defmodule Esp32Heart do
   defp init_max7219(spi_settings) do
     spi = :spi.open(spi_settings)
     write_register(spi, @decode_mode, 0)
-    write_register(spi, @intensity, 3)
+    write_register(spi, @intensity, 1)
     write_register(spi, @scan_limit, 7)
     write_register(spi, @shutdown, 1)
     write_register(spi, @display_test, 0)

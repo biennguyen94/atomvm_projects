@@ -10,6 +10,16 @@ Welcome to the AtomVM Elixir Project programs.
 
 The applications in this directory are Elixir ports of the corresponding Erlang projects. They make use of the [AtomVM Mix Plugin](https://github.com/atomvm/ExAtomVM) to compile, assemble, and if applicable, flash the application onto an ESP32 device.
 
+| Project | esp32 |
+|---------|-------|
+| block_breaker_2led | ❌ |
+| calculator | ❌ |
+| car_project | ❌ |
+| hour_glass | ✅ |
+| self_balance_robot | ❌ |
+| snake_blockbreaker | ✅ |
+| snake_game_2led | ❌ |
+
 For descriptions of each application, please refer to the README in the corresponding Erlang directory:
 
 | Elixir Application | Erlang README |
@@ -55,7 +65,7 @@ This target will create an AVM file (e.g., `calculator.avm`) file in the top-lev
 
 ### Running on the ESP32 platform
 
-To run this application on the ESP32 platform, you must flash the application to the device attached to your computer via USB. You may then optionally monitor the program via a serial console program to view any data output to the console.
+To run this application on the ESP32 platform, you must flash the application to the device attached to you via USB. You may then optionally monitor the program via a serial console program to view any data output to the console.
 
 #### Flashing onto an ESP32 Device
 

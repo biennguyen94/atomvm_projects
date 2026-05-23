@@ -5,7 +5,7 @@
 | Blinky          | ✅    |
 | ControlLed      | ❌    |
 | Encoder         | ❌    |
-| Esp32Heart      | ❌    |
+| Esp32Heart      | ✅    |
 | GpioInterrupt   | ❌    |
 | HelloWorld      | ✅    |
 | Joystick        | ✅    |

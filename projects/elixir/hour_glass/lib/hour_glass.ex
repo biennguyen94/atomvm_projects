@@ -19,6 +19,101 @@
 #
 
 defmodule HourGlass do
+  @moduledoc """
+  Hour Glass (sand simulation) game running on AtomVM, using an MPU9250 accelerometer for tilt
+  control and 2 MAX7219 LED matrices for display via SPI.
+
+  ## Overview
+  This module simulates sand particles inside an hourglass displayed on two 8x8 LED matrices
+  (MAX7219), combined into a 8x16 display. An MPU9250 accelerometer (I2C) detects the device's
+  orientation, and the sand particles fall and settle under simulated gravity. LEDs are lit to
+  represent sand grains, and they flow from one matrix to the other through a "bridge" at the
+  center boundary.
+
+  ## Features
+  - Real-time sand particle physics simulation on 8x16 LED display
+  - Tilt detection via MPU9250 accelerometer (4 orientations: top, bottom, left, right)
+  - Sand flows between the two LED matrices through a center gate
+  - Particles move individually with random branching (left/right preference)
+  - Self-contained sand animation – no GenServer loop needed (uses `call` polling)
+
+  ## Hardware pinout
+  ### I2C (MPU9250)
+  - SCL → GPIO22
+  - SDA → GPIO21
+  - MPU9250 address: 0x68
+  - Accelerometer full scale: ±16g
+  - Scale factor: 4.8828125e-4
+
+  ### SPI (MAX7219) – dual device
+  - MISO → GPIO19, MOSI → GPIO27, SCLK → GPIO5
+  - device_1: CS=18 (left LED)
+  - device_2: CS=23 (right LED)
+
+  ## Orientation detection
+  The MPU9250 accelerometer is read continuously. The angle is calculated from the X/Y axes:
+  ```
+  angle = atan2(acc_x * scale, acc_y * scale) * (180/π)
+  ```
+  | Angle range     | Direction |
+  |-----------------|-----------|
+  | -80° to -100°   | `:top`    |
+  | 160° to 180°    | `:left`   |
+  | -10° to 10°     | `:right`  |
+  | 80° to 90°      | `:bot`    |
+  | otherwise       | `:mid`    |
+
+  When a new direction is detected, the GenServer receives `{:change_direction, dir}` and resets
+  the simulation state.
+
+  ## Sand particle physics
+
+  Each sand grain is a lit pixel on the LED matrix. On each tick, the simulation iterates all
+  grains and applies movement rules:
+
+  1. **Gravity** – particles try to fall downward (y+1) if the space below is empty
+  2. **Left/right branching** – if blocked below, particles try to move left or right with
+     random preference
+  3. **Boundary crossing** – at position `{0, 7}` on LED 0 ↔ `{7, 0}` on LED 1, particles can
+     cross between the two matrices via `drop_seed/4`
+  4. **Coordinate transforms** – each direction (`:top`, `:bot`, `:left`, `:right`) rotates the
+     coordinate system so gravity always appears to pull "downward" in the display frame
+
+  The simulation uses a diagonal sweep pattern (`update_data/5`) from top-right to bottom-left
+  to prevent cascading updates within a single tick.
+
+  ## Flow
+  1. `start/0` – init I2C, configure MPU9250, start GenServer, spawn `hour_glass/1` loop, enter
+     `read/3` tilt polling
+  2. `init/1` – init SPI + MAX7219, set LED 0 empty, LED 1 full (sand starts on right side)
+  3. `read/3` – continuously read accelerometer, send direction changes to GenServer
+  4. `hour_glass/1` – polling loop that calls `:print_test` every 10ms
+  5. `handle_call(:print_test, ...)` – perform one simulation step:
+     - Move all sand particles via `update_data/5`
+     - Every 10th tick, drop sand across the center gate via `drop_seed/4`
+     - Detect when simulation has settled (no changes) → set `isstop: true`
+  6. Direction change via `handle_cast({:change_direction, dir})` resets the stop flag and
+     previous data, allowing sand to flow again in the new orientation
+
+  ## Coordinate system
+  Each LED has an 8×8 grid where `(x, y)` ranges from `(0, 0)` (top-left) to `(7, 7)`
+  (bottom-right). Transform functions rotate and flip coordinates based on the current
+  direction so that gravity always acts toward `y+1` in the transformed frame:
+
+  - `:top` – identity (sand falls from left LED to right LED via bridge)
+  - `:bot` – rotated 180° (sand falls from right LED to left LED via bridge)
+  - `:left` – rotated 90° CCW
+  - `:right` – rotated 90° CW
+
+  ## Center gate mechanism
+  The bridge between the two LEDs is at `(0, 7)` on LED 0 and `(7, 0)` on LED 1. When both
+  conditions are met (`:top` or `:bot` orientation, exactly one side lit), `drop_seed/4` toggles
+  both positions simultaneously, transferring the sand grain to the other LED.
+
+  ## GenServer messages
+  - Call `:print_test` – execute one sand simulation tick, return `:ok`
+  - Cast `{:change_direction, dir}` – change tilt direction, reset simulation
+  """
   use Bitwise
 
   @gpio_scl 22
@@ -132,7 +227,7 @@ defmodule HourGlass do
     write_digit(spi, @digit_0, @default_matrix, :device_2)
     state = %__MODULE__{spi: spi, data1: @empty_matrix, data2: @default_matrix, timer: 0,
                         predata1: @empty_matrix, predata2: @default_matrix, direction: :top, isstop: false}
-    IO.puts("Init SPI and MAX7219 OK\n")
+    # IO.puts("Init SPI and MAX7219 OK\n")
     {:ok, state}
   end
 
@@ -144,8 +239,8 @@ defmodule HourGlass do
 
       {timer, flag, last_data1, last_data2} =
         if state.timer == 1 do
-          {0, true, elem(drop_seed(state.spi, state.direction, new_data1, new_data2), 0),
-            elem(drop_seed(state.spi, state.direction, new_data1, new_data2), 1)}
+          {last_data1, last_data2} = drop_seed(state.spi, state.direction, new_data1, new_data2)
+          {0, true, last_data1, last_data2}
         else
           {state.timer + 1, false, new_data1, new_data2}
         end
@@ -154,7 +249,7 @@ defmodule HourGlass do
 
       new_state =
         if condition do
-          IO.puts("END")
+          # IO.puts("END")
           %{state | data1: last_data1, data2: last_data2, timer: 0,
                     predata1: @empty_matrix, predata2: @empty_matrix, direction: state.direction, isstop: true}
         else
@@ -221,14 +316,10 @@ defmodule HourGlass do
     Map.put(data, x + 1, temp)
   end
 
-  defp transform({x, y}, dir) do
-    cond do
-      dir == :right -> rotate_right({x, y})
-      dir == :top -> rotate_top({x, y})
-      dir == :left -> rotate_left({x, y})
-      true -> {x, y}
-    end
-  end
+  defp transform({x, y}, :right), do: rotate_right({x, y})
+  defp transform({x, y}, :top), do: rotate_top({x, y})
+  defp transform({x, y}, :left), do: rotate_left({x, y})
+  defp transform({x, y}, _), do: {x, y}
 
   defp flip_horizontally({x, y}), do: {7 - x, y}
   defp flip_vertically({x, y}), do: {x, 7 - y}
@@ -335,8 +426,8 @@ defmodule HourGlass do
     y = num - times
     x = 7 - times
     {{x1, y1}, {x2, y2}} = get_position({x, y}, dir)
-    new_data1 = move_seed(spi, :device_1, data1, {x1, y1}, dir)
-    new_data2 = move_seed(spi, :device_2, data2, {x2, y2}, dir)
+    new_data1 = if get_x_y(data1, {x1, y1}, dir) == @yes, do: move_seed(spi, :device_1, data1, {x1, y1}, dir), else: data1
+    new_data2 = if get_x_y(data2, {x2, y2}, dir) == @yes, do: move_seed(spi, :device_2, data2, {x2, y2}, dir), else: data2
     update_x_y(num, 1, times + 1, it, spi, new_data1, new_data2, dir)
   end
 
@@ -344,8 +435,8 @@ defmodule HourGlass do
     y = times
     x = 7 - (num - times)
     {{x1, y1}, {x2, y2}} = get_position({x, y}, dir)
-    new_data1 = move_seed(spi, :device_1, data1, {x1, y1}, dir)
-    new_data2 = move_seed(spi, :device_2, data2, {x2, y2}, dir)
+    new_data1 = if get_x_y(data1, {x1, y1}, dir) == @yes, do: move_seed(spi, :device_1, data1, {x1, y1}, dir), else: data1
+    new_data2 = if get_x_y(data2, {x2, y2}, dir) == @yes, do: move_seed(spi, :device_2, data2, {x2, y2}, dir), else: data2
     update_x_y(num, 0, times + 1, it, spi, new_data1, new_data2, dir)
   end
 
@@ -354,17 +445,15 @@ defmodule HourGlass do
     if value >= 0, do: 1, else: 0
   end
 
-  defp get_position({x, y}, dir) do
-    cond do
-      dir == @top -> {{x, y}, {y, x}}
-      dir == @bot -> {{y, x}, {x, y}}
-      dir == @left ->
-        new_y = rem(y + 7, 8)
-        {{new_y, x}, {new_y, x}}
-      true ->
-        new_x = rem(x + 7, 8)
-        {{y, new_x}, {y, new_x}}
-    end
+  defp get_position({x, y}, @top), do: {{x, y}, {y, x}}
+  defp get_position({x, y}, @bot), do: {{y, x}, {x, y}}
+  defp get_position({x, y}, @left) do
+    new_y = rem(y + 7, 8)
+    {{new_y, x}, {new_y, x}}
+  end
+  defp get_position({x, y}, _) do
+    new_x = rem(x + 7, 8)
+    {{y, new_x}, {y, new_x}}
   end
 
   # SPI and MAX7219 part
@@ -433,7 +522,7 @@ defmodule HourGlass do
     condition = (dir != direction) and (direction != @middle)
 
     if condition do
-      IO.puts("Send Request")
+      # IO.puts("Send Request")
       GenServer.cast(pid, {:change_direction, direction})
       Process.sleep(100)
       read(pid, i2c, direction)
@@ -460,6 +549,7 @@ defmodule HourGlass do
 
   def hour_glass(pid) do
     :ok = GenServer.call(pid, :print_test)
+    Process.sleep(10)
     hour_glass(pid)
   end
 end
