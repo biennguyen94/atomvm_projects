@@ -60,19 +60,15 @@ RUN git checkout v0.7.0-alpha.1
 
 ## Build esp32 platform
 WORKDIR /tools/AtomVM/src/platforms/esp32
-RUN . $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py build
+RUN bash -c '. $IDF_PATH/export.sh && python3 $IDF_PATH/tools/idf.py build'
 ENV PATH /tools/esp/esp-idf/components/espcoredump:\
 /tools/esp/esp-idf/components/partition_table:\
 /tools/esp/esp-idf/components/app_update:\
-/root/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:\
-/root/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin:\
+/root/.espressif/tools/xtensa-esp-elf-gdb/16.3_20250913/xtensa-esp-elf-gdb/bin:\
+/root/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20251107/xtensa-esp-elf/bin:\
 /root/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:\
-/root/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/bin:\
-/root/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:\
-/root/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf/bin:\
-/root/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:\
-/root/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/bin:\
-/root/.espressif/python_env/idf5.3_py3.12_env/bin:\
+/root/.espressif/tools/openocd-esp32/v0.12.0-esp32-20250707/openocd-esp32/bin:\
+/root/.espressif/python_env/idf5.5_py3.12_env/bin:\
 /tools/esp/esp-idf/tools:$PATH
 
 # https://doc.atomvm.org/latest/release-notes.html
@@ -85,8 +81,11 @@ WORKDIR /root
 RUN apt-get -qq update && apt-get -qq install curl
 RUN apt-get -qq install libncurses5-dev libncursesw5-dev
 
+RUN apt-get -qq install build-essential autoconf m4 libwxgtk3.2-dev libwxgtk-webview3.2-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev libssh-dev unixodbc-dev xsltproc fop libxml2-utils libncurses-dev openjdk-11-jdk
+
 RUN curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl &&\
     chmod a+x kerl &&\
+    ./kerl update releases &&\
     ./kerl build 29.0 &&\
     ./kerl install 29.0 ~/29.0 &&\
     echo ". /root/29.0/activate" >> ~/.bashrc
@@ -97,14 +96,17 @@ git clone --branch 3.27.0 --recursive https://github.com/erlang/rebar3.git rebar
     ./bootstrap &&\
     ./rebar3 local install
 
-ENV PATH $PATH:/root/29.0/.cache/rebar3/bin
+ENV PATH $PATH:/root/29.0/bin:/root/29.0/.cache/rebar3/bin
 
 # Install Elixir 1.19.5
+SHELL ["/bin/bash", "-c"]
 RUN \curl -sSL https://raw.githubusercontent.com/taylor/kiex/master/install | bash -s &&\
-echo "test -s \"/root/.kiex/scripts/kiex\" && source \"/root/.kiex/scripts/kiex\"" >> ~/.bashrc &&\
+    echo 'test -s "$HOME/.kiex/scripts/kiex" && source "$HOME/.kiex/scripts/kiex"' >> ~/.bashrc &&\
+    source "$HOME/.kiex/scripts/kiex" &&\
     kiex install 1.19.5 &&\
-    kiex use 1.19.5 &&\
-    kiex default 1.19.5
+    ELIXIR_VERSION=$(ls /root/.kiex/elixirs/ | grep '1.19.5' | head -1 | sed 's/elixir-//' | sed 's/\.env//') &&\
+    kiex use "$ELIXIR_VERSION" &&\
+    kiex default "$ELIXIR_VERSION"
 
 # Get back to root directory
 WORKDIR /root
