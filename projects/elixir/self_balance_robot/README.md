@@ -8,4 +8,4 @@
 
 This is the Elixir port of the `self_balance_robot` Erlang application.
 
-For a description of this application, please refer to the corresponding [Erlang README](../../erlang/self_balance_robot/README.md).
+For a description of this application, including ESP32 peripheral wiring, please refer to the corresponding [Erlang README](../../erlang/self_balance_robot/README.md).

@@ -8,7 +8,7 @@
 
 This is the Elixir port of the `snake_blockbreaker` Erlang application.
 
-For a description of this application, please refer to the corresponding [Erlang README](../../erlang/snake_blockbreaker/README.md).
+For a description of this application, including ESP32 peripheral wiring, please refer to the corresponding [Erlang README](../../erlang/snake_blockbreaker/README.md).
 
 ---
 
