@@ -10,7 +10,8 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
   - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [1. Deploy Docker Container](#1-deploy-docker-container)
-    - [2. Flash AtomVM Firmware](#2-flash-atomvm-firmware)
+    - [2. Access Container & Erase Firmware](#2-access-container--erase-firmware)
+    - [3. Flash AtomVM Image](#3-flash-atomvm-image)
   - [Building and Flashing Applications](#building-and-flashing-applications)
     - [Erlang (Rebar3)](#erlang-rebar3)
     - [Elixir (Mix)](#elixir-mix)
@@ -37,7 +38,7 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
 
 ### Prerequisites
 
-- Docker (recommended) or ESP-IDF toolchain installed locally
+- Docker (required)
 - ESP32 development board
 - USB cable for connecting ESP32 to your computer
 
@@ -55,32 +56,25 @@ docker build --network host -t <image_name> .
 docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:ubuntu24_04_v2 bash
 ```
 
-### 2. Flash AtomVM Firmware
+### 2. Access Container & Erase Firmware
+
+Connect your ESP32 and verify it's detected:
 
 ```bash
 # Access container
 docker exec -it bien_atomvm bash
 
-# Connect ESP32 and verify
+# Verify ESP32 is connected
 ls /dev/ttyUSB0
 
 # Erase existing firmware
 python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
-
-# Flash AtomVM image (offset 0x1000)
-
-### Elixir
-```bash
-cd /tools/atomvm_projects
-python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
-    --chip esp32 --port /dev/ttyUSB0 --baud 115200 \
-    --before default_reset --after hard_reset \
-    write_flash -u --flash_mode dio --flash_freq 40m --flash_size detect \
-    0x1000 atomvm_image/AtomVM-esp32-elixir-v0.7.0-alpha.1.img
 ```
 
-### Erlang
+### 3. Flash AtomVM Image
+
+Erlang
 ```bash
 cd /tools/atomvm_projects
 python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
@@ -88,6 +82,16 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --before default_reset --after hard_reset \
     write_flash -u --flash_mode dio --flash_freq 40m --flash_size detect \
     0x1000 atomvm_image/AtomVM-esp32-v0.7.0-alpha.1.img
+```
+
+Elixir
+```bash
+cd /tools/atomvm_projects
+python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
+    --chip esp32 --port /dev/ttyUSB0 --baud 115200 \
+    --before default_reset --after hard_reset \
+    write_flash -u --flash_mode dio --flash_freq 40m --flash_size detect \
+    0x1000 atomvm_image/AtomVM-esp32-elixir-v0.7.0-alpha.1.img
 ```
 
 > **Note**: If you get `No module named esptool`, run `. $IDF_PATH/export.sh`.
@@ -99,7 +103,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 ```bash
 # Build .avm packbeam
 cd /tools/atomvm_projects/example/erlang/hello_world
-rebar3 packbeam          # or: rebar3 atomvm packbeam
+rebar3 atomvm packbeam
 
 # Flash to ESP32 (offset 0x210000)
 rebar3 atomvm esp32_flash --port /dev/ttyUSB0
@@ -198,8 +202,8 @@ Pre-built images are located in the `atomvm_image/` directory. Flash at offset `
 
 | File | Description |
 |------|-------------|
-| `AtomVM-esp32-elixir-v0.7.0-alpha.1.img` | AtomVM with Elixir support, v0.7.0-alpha.1 |
 | `AtomVM-esp32-v0.7.0-alpha.1.img` | AtomVM (Erlang only), v0.7.0-alpha.1 |
+| `AtomVM-esp32-elixir-v0.7.0-alpha.1.img` | AtomVM with Elixir support, v0.7.0-alpha.1 |
 
 ## Additional Resources
 
