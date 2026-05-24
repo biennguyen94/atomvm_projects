@@ -6,12 +6,11 @@
 | ControlLed      | ❌    |
 | Encoder         | ❌    |
 | Esp32Heart      | ✅    |
-| GpioInterrupt   | ❌    |
+| GpioInterrupt   | ✅    |
 | HelloWorld      | ✅    |
 | Joystick        | ✅    |
 | LEDC_Example    | ✅    |
 | LEDC_Example2   | ❌    |
 | Mpu6500         | ✅    |
 | Mpu6500WebTemp  | ✅    |
-| hello_atomvm_disterl_wifi         | ✅    |
 
