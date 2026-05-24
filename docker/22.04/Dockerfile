@@ -17,6 +17,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
 #
+# NOTE: This Dockerfile may be out of date. Prefer using the 24.04 version instead.
+#
 
 FROM ubuntu:jammy
 

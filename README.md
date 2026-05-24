@@ -4,22 +4,25 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
 
 ## Table of Contents
 
-- [Repository Structure](#repository-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [1. Deploy Docker Container](#1-deploy-docker-container)
-  - [2. Flash AtomVM Firmware](#2-flash-atomvm-firmware)
-- [Building and Flashing Applications](#building-and-flashing-applications)
-  - [Erlang (Rebar3)](#erlang-rebar3)
-  - [Elixir (Mix)](#elixir-mix)
-  - [Debugging via Serial](#debugging-via-serial)
-- [Examples](#examples)
-  - [Erlang](#erlang-exampleerlang)
-  - [Elixir](#elixir-exampleelixir)
-- [Projects](#projects)
-  - [Erlang](#erlang-projectserlang)
-  - [Elixir](#elixir-projectselixir)
-- [Available Firmware Images](#available-firmware-images)
+- [AtomVM Projects](#atomvm-projects)
+  - [Table of Contents](#table-of-contents)
+  - [Repository Structure](#repository-structure)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [1. Deploy Docker Container](#1-deploy-docker-container)
+    - [2. Flash AtomVM Firmware](#2-flash-atomvm-firmware)
+  - [Building and Flashing Applications](#building-and-flashing-applications)
+    - [Erlang (Rebar3)](#erlang-rebar3)
+    - [Elixir (Mix)](#elixir-mix)
+    - [Debugging via Serial](#debugging-via-serial)
+  - [Examples](#examples)
+    - [Erlang (`example/erlang/`)](#erlang-exampleerlang)
+    - [Elixir (`example/elixir/`)](#elixir-exampleelixir)
+  - [Projects](#projects)
+    - [Erlang (`projects/erlang/`)](#erlang-projectserlang)
+    - [Elixir (`projects/elixir/`)](#elixir-projectselixir)
+  - [Available Firmware Images](#available-firmware-images)
+  - [Additional Resources](#additional-resources)
 
 ## Repository Structure
 
@@ -42,14 +45,14 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
 
 ```bash
 # Pull pre-built image
-docker pull biennguyen94/atomvm:ubuntu24_04_v1
+docker pull biennguyen94/atomvm:ubuntu24_04_v2
 
 # Or build it yourself
 cd docker/24.04
 docker build --network host -t <image_name> .
 
 # Run container
-docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:ubuntu24_04_v1 bash
+docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:ubuntu24_04_v2 bash
 ```
 
 ### 2. Flash AtomVM Firmware
@@ -66,11 +69,25 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 --port /dev/ttyUSB0 --baud 115200 erase_flash
 
 # Flash AtomVM image (offset 0x1000)
+
+### Elixir
+```bash
+cd /tools/atomvm_projects
 python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
     --chip esp32 --port /dev/ttyUSB0 --baud 115200 \
     --before default_reset --after hard_reset \
     write_flash -u --flash_mode dio --flash_freq 40m --flash_size detect \
     0x1000 atomvm_image/AtomVM-esp32-elixir-v0.7.0-alpha.1.img
+```
+
+### Erlang
+```bash
+cd /tools/atomvm_projects
+python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
+    --chip esp32 --port /dev/ttyUSB0 --baud 115200 \
+    --before default_reset --after hard_reset \
+    write_flash -u --flash_mode dio --flash_freq 40m --flash_size detect \
+    0x1000 atomvm_image/AtomVM-esp32-v0.7.0-alpha.1.img
 ```
 
 > **Note**: If you get `No module named esptool`, run `. $IDF_PATH/export.sh`.
@@ -81,7 +98,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 
 ```bash
 # Build .avm packbeam
-cd example/erlang/hello_world
+cd /tools/atomvm_projects/example/erlang/hello_world
 rebar3 packbeam          # or: rebar3 atomvm packbeam
 
 # Flash to ESP32 (offset 0x210000)
@@ -99,7 +116,7 @@ python3 ${IDF_PATH}/components/esptool_py/esptool/esptool.py \
 
 ```bash
 # Build .avm packbeam
-cd example/elixir/HelloWorld
+cd /tools/atomvm_projects/example/elixir/HelloWorld
 mix deps.get && mix atomvm.packbeam
 
 # Flash to ESP32
@@ -182,7 +199,6 @@ Pre-built images are located in the `atomvm_image/` directory. Flash at offset `
 | File | Description |
 |------|-------------|
 | `AtomVM-esp32-elixir-v0.7.0-alpha.1.img` | AtomVM with Elixir support, v0.7.0-alpha.1 |
-| `AtomVM-esp32-v0.6.5.img` | AtomVM (Erlang only), v0.6.5 |
 | `AtomVM-esp32-v0.7.0-alpha.1.img` | AtomVM (Erlang only), v0.7.0-alpha.1 |
 
 ## Additional Resources
