@@ -25,8 +25,8 @@ defmodule SntpClock do
     ]
   ]
 
-  @wifi_ssid "HBTBK"
-  @wifi_passphrase "49494949"
+  @wifi_ssid "your_SSID"
+  @wifi_passphrase "your_password"
   @sntp_host "pool.ntp.org"
   @timezone_offset_ms 7 * 3600 * 1000
 
