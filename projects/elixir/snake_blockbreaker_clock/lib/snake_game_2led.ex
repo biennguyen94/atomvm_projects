@@ -826,7 +826,13 @@ defmodule SnakeGame2Led do
   end
 
   defp write_register(spi, address, data, device) do
-    :spi.write_at(spi, device, address, @num_of_bits, data)
+    :spi.write(
+      spi,
+      device,
+      %{
+        write_data: <<address, data>>
+      }
+    )
   end
 
   defp get_device(num) do
@@ -920,10 +926,38 @@ defmodule SnakeGame2Led do
       new_proc = spawn(__MODULE__, :game_over_process, [self(), 0, 0])
       %{state | gameover: true, goverproc: new_proc}
     else
-      {data1, data2} = update_data(new_snake_body, {@empty_matrix, @empty_matrix}, new_food, 0, new_snake_len)
-      write_digit(state.spi, @digit_0, data1, :device_1)
-      write_digit(state.spi, @digit_0, data2, :device_2)
-      %{state |
+      old_tail = Map.get(state.snakebody, 0)
+
+      {data1, data2} =
+        if new_snake_len == state.snakelen do
+          clear_led(
+            state.spi,
+            old_tail,
+            {state.data1, state.data2}
+          )
+        else
+          {state.data1, state.data2}
+        end
+
+      {data1, data2} =
+        set_led(
+          state.spi,
+          new_snake_head,
+          {data1, data2}
+        )
+
+      {data1, data2} =
+        if new_snake_len > state.snakelen do
+          set_led(
+            state.spi,
+            new_food,
+            {data1, data2}
+          )
+        else
+          {data1, data2}
+        end
+      %{
+        state |
         snakehead: new_snake_head,
         snakebody: new_snake_body,
         snakelen: new_snake_len,
@@ -1068,22 +1102,28 @@ defmodule SnakeGame2Led do
 
   defp rand_led() do
     value = :atomvm.random()
-    if value >= 0 do
-      1
-    else
-      0
-    end
+    IO.puts("RANDOM LED = #{value}")
+    rem(abs(value), 2)
   end
 
   defp spawn_new_food(body, size) do
     food_x = rand()
     food_y = rand()
     food_id = rand_led()
-    flag = is_exits(body, {food_id, {food_x, food_y}}, size, 0)
+
+    food = {food_id, {food_x, food_y}}
+
+    IO.puts("TRY FOOD = #{inspect(food)}")
+
+    flag = is_exits(body, food, size, 0)
+
+    IO.puts("FOOD EXISTS = #{inspect(flag)}")
+
     if flag do
       spawn_new_food(body, size)
     else
-      {food_id, {food_x, food_y}}
+      IO.puts("NEW FOOD = #{inspect(food)}")
+      food
     end
   end
 
@@ -1168,5 +1208,36 @@ defmodule SnakeGame2Led do
       end
     GenServer.cast(pid, :move)
     loop(pid, new_speed)
+  end
+  defp set_led(spi, {id, {x, y}}, {data1, data2}) do
+    device = get_device(id)
+    data = get_data(device, {data1, data2})
+
+    row = Map.get(data, x + 1)
+    new_row = row ||| (128 >>> y)
+    
+    write_register(spi, x + 1, new_row, device)
+
+    get_return_data(
+      {data1, data2},
+      Map.put(data, x + 1, new_row),
+      device
+    )
+  end
+
+  defp clear_led(spi, {id, {x, y}}, {data1, data2}) do
+    device = get_device(id)
+    data = get_data(device, {data1, data2})
+
+    row = Map.get(data, x + 1)
+    new_row = row &&& (~~~(128 >>> y))
+
+    write_register(spi, x + 1, new_row, device)
+
+    get_return_data(
+      {data1, data2},
+      Map.put(data, x + 1, new_row),
+      device
+    )
   end
 end

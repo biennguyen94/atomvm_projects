@@ -439,7 +439,7 @@ defmodule SnakeBlockbreakerClock do
     GPIO.set_pin_pull(@gpio_sw, :up)
 
     setup_adc()
-    wait_for_sntp(120)
+    wait_for_sntp(10)
     show_clock(pid)
 
     start_animation(pid)
