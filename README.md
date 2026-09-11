@@ -44,16 +44,27 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
 
 ### 1. Deploy Docker Container
 
+The quickest option is to run the setup script from the repository root. It pulls the pre-built image, starts the container, and updates the repository inside the container:
+
 ```bash
-# Pull pre-built image
+./setup.sh
+```
+
+The script creates the container with the name `bien_atomvm` and runs `git pull` in `/tools/atomvm_projects` inside the container. Alternatively, use one of the manual setup options below.
+
+#### Use the Pre-built Image
+
+```bash
 docker pull biennguyen94/atomvm:debian13_v1
-
-# Or build it yourself
-cd docker/debian-13
-docker build --network host -t <image_name> .
-
-# Run container
 docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it biennguyen94/atomvm:debian13_v1 bash
+```
+
+#### Build the Image Locally
+
+```bash
+cd docker/debian-13
+docker build --network host -t atomvm:debian13 .
+docker run --privileged -v /dev/:/dev/ -d --name bien_atomvm -it atomvm:debian13 bash
 ```
 
 ### 2. Access Container & Erase Firmware
