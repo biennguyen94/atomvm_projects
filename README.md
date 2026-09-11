@@ -9,6 +9,7 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
   - [Repository Structure](#repository-structure)
   - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
+    - [WSL USB Setup](#wsl-usb-setup)
     - [1. Deploy Docker Container](#1-deploy-docker-container)
     - [2. Access Container \& Erase Firmware](#2-access-container--erase-firmware)
     - [3. Flash AtomVM Image](#3-flash-atomvm-image)
@@ -41,6 +42,37 @@ A collection of Erlang and Elixir projects for [AtomVM](https://github.com/atomv
 - Docker (required)
 - ESP32 development board
 - USB cable for connecting ESP32 to your computer
+
+### WSL USB Setup
+
+> **Linux users:** Skip this section and continue with [Deploy Docker Container](#1-deploy-docker-container).
+
+On Windows with WSL, use [`usbipd-win`](https://github.com/dorssel/usbipd-win) to attach the ESP32 USB device to your WSL distribution. Run the installation and device commands in **Windows PowerShell as Administrator**:
+
+```powershell
+# Install usbipd-win (or install it from the Microsoft Store)
+winget install --interactive --exact dorssel.usbipd-win
+
+# List connected USB devices and note the ESP32 BUSID
+usbipd list
+
+# Share the ESP32 USB device (replace 4-1 with your BUSID)
+usbipd bind --busid 4-1
+```
+
+Then attach the device to WSL from a regular PowerShell window:
+
+```powershell
+usbipd attach --wsl --busid 4-1
+```
+
+Inside WSL, verify that the serial device is available before starting the container:
+
+```bash
+ls /dev/ttyUSB* /dev/ttyACM*
+```
+
+If the board is unplugged or WSL is restarted, run `usbipd list` and the attach command again. To release it from WSL, run `usbipd detach --busid 4-1` in PowerShell.
 
 ### 1. Deploy Docker Container
 
