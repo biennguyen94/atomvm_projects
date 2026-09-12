@@ -879,17 +879,23 @@ defmodule BlockBreaker2Led do
   end
 
   def handle_cast({:display_game_win, times}, state) do
-    display_game_text(state.spi, times, :win)
+    if state.isgameover do
+      display_game_text(state.spi, times, :win)
+    end
     {:noreply, state}
   end
 
   def handle_cast({:display_game_over, times}, state) do
-    display_game_text(state.spi, times, :lose)
+    if state.isgameover do
+      display_game_text(state.spi, times, :lose)
+    end
     {:noreply, state}
   end
 
   def handle_cast({:display_breaker_game, times}, state) do
-    display_game_text(state.spi, times, :welcome)
+    if state.isgameover do
+      display_game_text(state.spi, times, :welcome)
+    end
     {:noreply, state}
   end
 
@@ -909,6 +915,9 @@ defmodule BlockBreaker2Led do
             if is_pid(state.goverproc) do
               send(state.goverproc, :stop)
             end
+            if is_pid(state.joystick_pid) do
+              send(state.joystick_pid, :stop)
+            end
             GenServer.cast(:snake_blockbreaker_clock, {:exit_to_clock})
             {:stop, :normal, state}
           else
@@ -925,7 +934,6 @@ defmodule BlockBreaker2Led do
   end
 
   def handle_info(:stop_peripherals, state) do
-    GPIO.stop()
     if is_pid(state.joystick_pid) do
       send(state.joystick_pid, :stop)
     end
@@ -941,11 +949,19 @@ defmodule BlockBreaker2Led do
     {:stop, :normal, state}
   end
 
+  def handle_info(_message, state) do
+    {:noreply, state}
+  end
+
   def code_change(_old_vsn, state, _extra) do
     {:ok, state}
   end
 
-  def terminate(_reason, _state) do
+  def terminate(_reason, state) do
+    GPIO.stop()
+    if is_pid(state.joystick_pid) do
+      send(state.joystick_pid, :stop)
+    end
     :ok
   end
 

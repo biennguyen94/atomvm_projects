@@ -545,7 +545,7 @@ defmodule SnakeBlockbreakerClock do
   def handle_info({:clock_done}, state) do
     IO.puts("parent: clock done, starting game selection")
     new_proc = spawn(__MODULE__, :display_select_game, [self(), 0])
-    spawn(__MODULE__, :select_game, [self(), @gpio_vrx])
+    spawn(__MODULE__, :select_game, [self(), @gpio_vrx, :wait_for_neutral])
     {:noreply, %{state | goverproc: new_proc}}
   end
 
@@ -573,6 +573,20 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp select_game(pid, adcx) do
+    select_game(pid, adcx, :ready)
+  end
+
+  def select_game(pid, adcx, :wait_for_neutral) do
+    {:ok, x} = read_adc(adcx)
+    if x >= @low_range and x <= @high_range do
+      select_game(pid, adcx, :ready)
+    else
+      :timer.sleep(@delay_read_adc)
+      select_game(pid, adcx, :wait_for_neutral)
+    end
+  end
+
+  def select_game(pid, adcx, :ready) do
     {:ok, x} = read_adc(adcx)
     cond do
       x < @low_range ->

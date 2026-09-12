@@ -151,6 +151,7 @@ defmodule SnakeGame2Led do
     :gameover,
     :goverproc,
     :joystick_pid,
+    :blink_pid,
     :button_press_time
   ]
 
@@ -668,7 +669,8 @@ defmodule SnakeGame2Led do
     :timer.sleep(500)
     joystick_pid = spawn(__MODULE__, :joystick, [pid, @gpio_vrx, @gpio_vry])
     GenServer.cast(pid, {:update_joystick_pid, joystick_pid})
-    spawn(__MODULE__, :blink_food, [pid])
+    blink_pid = spawn(__MODULE__, :blink_food, [pid])
+    GenServer.cast(pid, {:update_blink_pid, blink_pid})
     SnakeBlockbreakerClock.DistErl.register_loop(self())
     loop(pid, @max_speed)
   end
@@ -690,6 +692,10 @@ defmodule SnakeGame2Led do
 
   def handle_cast({:update_joystick_pid, pid}, state) do
     {:noreply, %{state | joystick_pid: pid}}
+  end
+
+  def handle_cast({:update_blink_pid, pid}, state) do
+    {:noreply, %{state | blink_pid: pid}}
   end
 
   def handle_cast({:change_direction, x, y}, state) do
@@ -718,12 +724,16 @@ defmodule SnakeGame2Led do
   end
 
   def handle_cast({:display_game_over, times}, state) do
-    display_game_text(state.spi, times, :lose)
+    if state.gameover do
+      display_game_text(state.spi, times, :lose)
+    end
     {:noreply, state}
   end
 
   def handle_cast({:display_snake_game, times}, state) do
-    display_game_text(state.spi, times, :welcome)
+    if state.gameover do
+      display_game_text(state.spi, times, :welcome)
+    end
     {:noreply, state}
   end
 
@@ -761,6 +771,9 @@ defmodule SnakeGame2Led do
             if is_pid(state.goverproc) do
               send(state.goverproc, :stop)
             end
+            if is_pid(state.joystick_pid) do
+              send(state.joystick_pid, :stop)
+            end
             GenServer.cast(:snake_blockbreaker_clock, {:exit_to_clock})
             {:stop, :normal, state}
           else
@@ -788,7 +801,6 @@ defmodule SnakeGame2Led do
   end
 
   def handle_info(:stop_peripherals, state) do
-    GPIO.stop()
     if is_pid(state.joystick_pid) do
       send(state.joystick_pid, :stop)
     end
@@ -800,15 +812,29 @@ defmodule SnakeGame2Led do
     if is_pid(state.goverproc) do
       send(state.goverproc, :stop)
     end
+    if is_pid(state.blink_pid) do
+      send(state.blink_pid, :stop)
+    end
     GenServer.cast(:snake_blockbreaker_clock, :game_over)
     {:stop, :normal, state}
+  end
+
+  def handle_info(_message, state) do
+    {:noreply, state}
   end
 
   def code_change(_old_vsn, state, _extra) do
     {:ok, state}
   end
 
-  def terminate(_reason, _state) do
+  def terminate(_reason, state) do
+    GPIO.stop()
+    if is_pid(state.joystick_pid) do
+      send(state.joystick_pid, :stop)
+    end
+    if is_pid(state.blink_pid) do
+      send(state.blink_pid, :stop)
+    end
     IO.puts("snake genserver terminated")
     :ok
   end
@@ -918,6 +944,9 @@ defmodule SnakeGame2Led do
     status = is_game_over(new_snake_head, new_snake_body, new_snake_len - 1, 0)
     if status do
       send(self(), :stop_peripherals)
+      if is_pid(state.blink_pid) do
+        send(state.blink_pid, :stop)
+      end
       :timer.sleep(500)
       {data1, data2} = handle_game_over(state.snakelen)
       write_digit(state.spi, @digit_0, data1, :device_1)
@@ -1170,8 +1199,10 @@ defmodule SnakeGame2Led do
           end
         if count_reset_to_welcome == 1 do
           send(p, :back_to_welcome)
+          :ok
+        else
+          game_over_process(p, new_times, new_count_reset_to_welcome)
         end
-        game_over_process(p, new_times, new_count_reset_to_welcome)
     end
   end
 
@@ -1192,11 +1223,16 @@ defmodule SnakeGame2Led do
   end
 
   def blink_food(pid) do
-    GenServer.cast(pid, :turn_off_food)
-    :timer.sleep(@blink_rate)
-    GenServer.cast(pid, :turn_on_food)
-    :timer.sleep(@blink_rate)
-    blink_food(pid)
+    receive do
+      :stop -> :ok
+    after
+      0 ->
+        GenServer.cast(pid, :turn_off_food)
+        :timer.sleep(@blink_rate)
+        GenServer.cast(pid, :turn_on_food)
+        :timer.sleep(@blink_rate)
+        blink_food(pid)
+    end
   end
 
   def loop(pid, pre_speed) do
