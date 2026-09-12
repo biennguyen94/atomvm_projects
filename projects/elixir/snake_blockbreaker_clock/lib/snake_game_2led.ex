@@ -781,6 +781,14 @@ defmodule SnakeGame2Led do
             if is_pid(state.goverproc) do
               send(state.goverproc, :stop)
             end
+            if is_pid(state.joystick_pid) do
+              send(state.joystick_pid, :stop)
+            end
+            if is_pid(state.blink_pid) do
+              send(state.blink_pid, :stop)
+            end
+            joystick_pid = spawn(__MODULE__, :joystick, [self(), @gpio_vrx, @gpio_vry])
+            blink_pid = spawn(__MODULE__, :blink_food, [self()])
             {snake_head, snake_body, food, {data1, data2}} = init_snake(state.spi, @body)
             new_state = %{state |
               snakehead: snake_head,
@@ -790,6 +798,8 @@ defmodule SnakeGame2Led do
               direction: @direction,
               data1: data1,
               data2: data2,
+              joystick_pid: joystick_pid,
+              blink_pid: blink_pid,
               gameover: false,
               goverproc: nil,
               button_press_time: nil

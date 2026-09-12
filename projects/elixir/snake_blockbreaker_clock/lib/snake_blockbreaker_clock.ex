@@ -175,6 +175,117 @@ defmodule SnakeBlockbreakerClock do
     56 => 0b00000000
   }
 
+  @creator_text ~c"CREATOR: BIEN NGUYEN"
+  @creator_font %{
+    ?C => [
+      0b00111110,
+      0b01000001,
+      0b01000001,
+      0b01000001,
+      0b00100010
+    ],
+    ?R => [
+      0b01111111,
+      0b00001001,
+      0b00011001,
+      0b00101001,
+      0b01000110
+    ],
+    ?E => [
+      0b01111111,
+      0b01001001,
+      0b01001001,
+      0b01000001,
+      0b01000001
+    ],
+    ?A => [
+      0b01111110,
+      0b00001001,
+      0b00001001,
+      0b00001001,
+      0b01111110
+    ],
+    ?T => [
+      0b00000001,
+      0b00000001,
+      0b01111111,
+      0b00000001,
+      0b00000001
+    ],
+    ?O => [
+      0b00111110,
+      0b01000001,
+      0b01000001,
+      0b01000001,
+      0b00111110
+    ],
+    ?: => [
+      0b00000000,
+      0b00010100,
+      0b00000000,
+      0b00010100,
+      0b00000000
+    ],
+    ?B => [
+      0b01111111,
+      0b01001001,
+      0b01001001,
+      0b01001001,
+      0b00110110
+    ],
+    ?I => [
+      0b00000000,
+      0b01000001,
+      0b01111111,
+      0b01000001,
+      0b00000000
+    ],
+    ?N => [
+      0b01111111,
+      0b00000110,
+      0b00011000,
+      0b01100000,
+      0b01111111
+    ],
+    ?G => [
+      0b00111110,
+      0b01000001,
+      0b01001001,
+      0b01001001,
+      0b00111010
+    ],
+    ?U => [
+      0b00111111,
+      0b01000000,
+      0b01000000,
+      0b01000000,
+      0b00111111
+    ],
+    ?Y => [
+      0b00000111,
+      0b00001000,
+      0b01110000,
+      0b00001000,
+      0b00000111
+    ],
+    ?M => [
+      0b01111111,
+      0b00000110,
+      0b00011000,
+      0b00000110,
+      0b01111111
+    ],
+    ?\s => [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+  @clock_message_end_offset 62
+  @creator_message_end_offset 104
+
   @spisettings [
     bus_config: [miso: 19, mosi: 27, sclk: 5],
     device_config: [
@@ -488,10 +599,12 @@ defmodule SnakeBlockbreakerClock do
     end
 
     {:ok, _} = SnakeBlockbreakerClock.DistErl.start_link()
+
     case SnakeBlockbreakerClock.WiFi.start_link() do
       {:ok, _} -> :ok
       {:error, _} -> IO.puts("wifi: not available, game runs without remote speed control")
     end
+
     {:ok, pid} = GenServer.start(__MODULE__, [], name: :snake_blockbreaker_clock)
 
     GPIO.set_pin_mode(@gpio_sw, :input)
@@ -534,9 +647,11 @@ defmodule SnakeBlockbreakerClock do
 
   def handle_cast({:exit_to_clock}, state) do
     IO.puts("parent: exiting to clock mode")
+
     if is_pid(state.goverproc) do
       send(state.goverproc, :stop)
     end
+
     clear_display(state.spi)
     clock_pid = spawn(__MODULE__, :display_clock, [self(), state.spi])
     {:noreply, %{state | goverproc: clock_pid}}
@@ -556,9 +671,11 @@ defmodule SnakeBlockbreakerClock do
 
   def handle_info({from, :do_select_game}, state) do
     IO.puts("receive do_select_game")
+
     if is_pid(state.goverproc) do
       send(state.goverproc, :stop)
     end
+
     new_state = %{state | goverproc: nil}
     send(from, {:spi, state.spi})
     {:noreply, new_state}
@@ -578,6 +695,7 @@ defmodule SnakeBlockbreakerClock do
 
   def select_game(pid, adcx, :wait_for_neutral) do
     {:ok, x} = read_adc(adcx)
+
     if x >= @low_range and x <= @high_range do
       select_game(pid, adcx, :ready)
     else
@@ -588,17 +706,22 @@ defmodule SnakeBlockbreakerClock do
 
   def select_game(pid, adcx, :ready) do
     {:ok, x} = read_adc(adcx)
+
     cond do
       x < @low_range ->
         send(pid, {self(), :do_select_game})
+
         receive do
           {:spi, spi} -> SnakeGame2Led.start(spi)
         end
+
       x > @high_range ->
         send(pid, {self(), :do_select_game})
+
         receive do
           {:spi, spi} -> BlockBreaker2Led.start(spi)
         end
+
       true ->
         :timer.sleep(@delay_read_adc)
         select_game(pid, adcx)
@@ -611,12 +734,14 @@ defmodule SnakeBlockbreakerClock do
     after
       800 ->
         GenServer.cast(p, {:display_select_game_flag, times})
+
         new_times =
           if times + 8 > 32 do
             0
           else
             times + 8
           end
+
         display_select_game(p, new_times)
     end
   end
@@ -698,6 +823,7 @@ defmodule SnakeBlockbreakerClock do
 
   defp wait_for_sntp(retries) do
     epoch_ms = :erlang.system_time(:millisecond)
+
     if epoch_ms > 1_600_000_000_000 do
       IO.puts("sntp: time is valid (epoch=#{epoch_ms})")
     else
@@ -709,7 +835,20 @@ defmodule SnakeBlockbreakerClock do
 
   defp show_clock(pid) do
     spi = GenServer.call(pid, :get_spi)
-    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0, nil, nil)
+
+    clock_loop(
+      spi,
+      @empty_matrix,
+      @empty_matrix,
+      0,
+      @empty_matrix,
+      @empty_matrix,
+      0,
+      0,
+      0,
+      nil,
+      nil
+    )
   end
 
   def display_clock(parent_pid, spi) do
@@ -717,7 +856,21 @@ defmodule SnakeBlockbreakerClock do
     GPIO.set_pin_pull(@gpio_sw, :up)
     :esp_adc.start(@gpio_vrx)
     :esp_adc.start(@gpio_vry)
-    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0, nil, nil)
+
+    clock_loop(
+      spi,
+      @empty_matrix,
+      @empty_matrix,
+      0,
+      @empty_matrix,
+      @empty_matrix,
+      0,
+      0,
+      0,
+      nil,
+      nil
+    )
+
     clear_display(spi)
     send(parent_pid, {:clock_done})
   end
@@ -727,7 +880,19 @@ defmodule SnakeBlockbreakerClock do
     GenServer.cast(pid, {:set_goverproc, new_proc})
   end
 
-  defp clock_loop(spi, prev_left, prev_right, tick, disp_left, disp_right, shift_x, shift_y, blink_count, message_offset, message_step) do
+  defp clock_loop(
+         spi,
+         prev_left,
+         prev_right,
+         tick,
+         disp_left,
+         disp_right,
+         shift_x,
+         shift_y,
+         blink_count,
+         message_offset,
+         message_step
+       ) do
     receive do
       :stop -> :ok
     after
@@ -754,6 +919,7 @@ defmodule SnakeBlockbreakerClock do
               if new_left != prev_left do
                 apply_effect(spi, prev_left, new_left, :device_1, rem(hour, 3))
               end
+
               if new_right != prev_right do
                 apply_effect(spi, prev_right, new_right, :device_2, rem(minute, 3))
               end
@@ -772,19 +938,33 @@ defmodule SnakeBlockbreakerClock do
           end
 
           {new_message_offset, new_message_step} =
-            if is_nil(message_offset) and new_shift_x < 0 do
-              {0, 1}
+            if is_nil(message_offset) and is_nil(message_step) and new_shift_x < 0 do
+              if new_shift_y > 0 do
+                {0, 2}
+              else
+                {0, 1}
+              end
             else
-              if is_nil(message_offset) and new_shift_x > 0 do
-                {46, -1}
+              if is_nil(message_offset) and is_nil(message_step) and new_shift_x > 0 do
+                {@clock_message_end_offset, -1}
               else
                 case {message_offset, message_step} do
+                  {nil, :wait_for_neutral} when new_shift_x == 0 and new_shift_y == 0 -> {nil, nil}
+                  {nil, :wait_for_neutral} -> {nil, :wait_for_neutral}
                   {nil, _} -> {nil, nil}
+                  {offset, 2} when new_shift_x < 0 and new_shift_y > 0 and offset < @creator_message_end_offset -> {offset + 1, 2}
+                  {@creator_message_end_offset, 2} when new_shift_x < 0 and new_shift_y > 0 -> {0, 2}
+                  {offset, 2} when new_shift_x == 0 and new_shift_y == 0 and offset < @creator_message_end_offset -> {offset + 1, 2}
+                  {@creator_message_end_offset, 2} when new_shift_x == 0 and new_shift_y == 0 -> {0, 2}
+                  {_offset, 2} when new_shift_x == 0 and new_shift_y != 0 -> {nil, nil}
+                  {_offset, 2} -> {nil, :wait_for_neutral}
                   {_offset, _step} when new_shift_x == 0 -> {nil, nil}
-                  {offset, 1} when offset < 62 -> {offset + 1, 1}
-                  {62, 1} -> {0, 1}
+                  {offset, 1} when offset < @clock_message_end_offset -> {offset + 1, 1}
+                  {@clock_message_end_offset, 1} -> {0, 1}
+                  {offset, 2} when offset < @creator_message_end_offset -> {offset + 1, 2}
+                  {@creator_message_end_offset, 2} -> {0, 2}
                   {offset, -1} when offset > 0 -> {offset - 1, -1}
-                  {0, -1} -> {46, -1}
+                  {0, -1} -> {@clock_message_end_offset, -1}
                   _ -> {nil, nil}
                 end
               end
@@ -792,16 +972,32 @@ defmodule SnakeBlockbreakerClock do
 
           {new_disp_left, new_disp_right} =
             if is_integer(new_message_offset) do
-              clock_message_frame(new_message_offset)
+              clock_message_frame(new_message_offset, new_message_step)
             else
               apply_shifts(time_left, time_right, new_shift_x, new_shift_y)
             end
 
           blink_bit = 0b00000001
           blink_on? = rem(blink_count, 10) < 5
-          row8 = (Map.get(new_disp_left, 8, 0) &&& ~~~blink_bit) ||| (if blink_on?, do: blink_bit, else: 0)
+
+          row8 =
+            if new_message_step == 2 do
+              Map.get(new_disp_left, 8, 0)
+            else
+              (Map.get(new_disp_left, 8, 0) &&& ~~~blink_bit) |||
+                if blink_on?, do: blink_bit, else: 0
+            end
+
           new_disp_left = Map.put(new_disp_left, 8, row8)
-          row1 = (Map.get(new_disp_right, 1, 0) &&& ~~~blink_bit) ||| (if blink_on?, do: blink_bit, else: 0)
+
+          row1 =
+            if new_message_step == 2 do
+              Map.get(new_disp_right, 1, 0)
+            else
+              (Map.get(new_disp_right, 1, 0) &&& ~~~blink_bit) |||
+                if blink_on?, do: blink_bit, else: 0
+            end
+
           new_disp_right = Map.put(new_disp_right, 1, row1)
 
           if new_disp_left != disp_left or new_disp_right != disp_right do
@@ -810,33 +1006,68 @@ defmodule SnakeBlockbreakerClock do
           end
 
           Process.sleep(50)
-          clock_loop(spi, time_left, time_right, new_tick, new_disp_left, new_disp_right, new_shift_x, new_shift_y, blink_count + 1, new_message_offset, new_message_step)
+
+          clock_loop(
+            spi,
+            time_left,
+            time_right,
+            new_tick,
+            new_disp_left,
+            new_disp_right,
+            new_shift_x,
+            new_shift_y,
+            blink_count + 1,
+            new_message_offset,
+            new_message_step
+          )
         end
     end
   end
 
-  defp clock_message_frame(offset) do
-    data1 = clock_message_data(@empty_matrix, 1, offset)
-    data2 = clock_message_data(@empty_matrix, 1, offset + 8)
+  defp clock_message_frame(offset, message_step) do
+    data1 = clock_message_data(@empty_matrix, 1, offset, message_step)
+    data2 = clock_message_data(@empty_matrix, 1, offset + 8, message_step)
     {data1, data2}
   end
 
-  defp clock_message_data(result, 9, _offset), do: result
+  defp clock_message_data(result, 9, _offset, _message_step), do: result
 
-  defp clock_message_data(result, row, offset) do
-    value = Map.get(@clock_message, row + offset, 0)
-    clock_message_data(Map.put(result, row, value), row + 1, offset)
+  defp clock_message_data(result, row, offset, message_step) do
+    value = message_column(row + offset, message_step)
+    clock_message_data(Map.put(result, row, value), row + 1, offset, message_step)
+  end
+
+  defp message_column(index, 2) when index <= 120 do
+    creator_index = index - 1
+    character = Enum.at(@creator_text, div(creator_index, 6))
+    glyph = Map.get(@creator_font, character, [0, 0, 0, 0, 0])
+    glyph_column = Enum.at(glyph, rem(creator_index, 6), 0)
+    compress_creator_column(glyph_column)
+  end
+
+  defp message_column(index, _message_step), do: Map.get(@clock_message, index, 0)
+
+  defp compress_creator_column(column) do
+    top = (((column >>> 6) &&& 1) ||| ((column >>> 5) &&& 1)) <<< 5
+    upper = ((column >>> 4) &&& 1) <<< 4
+    middle = ((column >>> 3) &&& 1) <<< 3
+    lower = ((column >>> 2) &&& 1) <<< 2
+    bottom = (((column >>> 1) &&& 1) ||| (column &&& 1)) <<< 1
+    top ||| upper ||| middle ||| lower ||| bottom
   end
 
   defp read_joystick_shifts(shift_x, shift_y) do
-    {:ok, x} = case :esp_adc.read(@gpio_vrx) do
-      {:ok, {raw, _}} -> {:ok, raw}
-      other -> other
-    end
-    {:ok, y} = case :esp_adc.read(@gpio_vry) do
-      {:ok, {raw, _}} -> {:ok, raw}
-      other -> other
-    end
+    {:ok, x} =
+      case :esp_adc.read(@gpio_vrx) do
+        {:ok, {raw, _}} -> {:ok, raw}
+        other -> other
+      end
+
+    {:ok, y} =
+      case :esp_adc.read(@gpio_vry) do
+        {:ok, {raw, _}} -> {:ok, raw}
+        other -> other
+      end
 
     x_dev = abs(x - 2048)
     y_dev = abs(y - 2048)
@@ -845,7 +1076,7 @@ defmodule SnakeBlockbreakerClock do
     cond do
       x_dev > y_dev and x_dev > min_dev and x < @low_range -> {shift_x - 1, 0}
       x_dev > y_dev and x_dev > min_dev and x > @high_range -> {shift_x + 1, 0}
-      y_dev > x_dev and y_dev > min_dev and y < @low_range -> {0, shift_y + 1}
+      y_dev > x_dev and y_dev > min_dev and y < @low_range -> {shift_x - 1, 1}
       y_dev > x_dev and y_dev > min_dev and y > @high_range -> {0, shift_y - 1}
       true -> {0, 0}
     end
@@ -857,23 +1088,29 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp tilt_cols_coupled(left, right, 0), do: {left, right}
+
   defp tilt_cols_coupled(left, right, shift) do
     s = rem(shift, 16)
     s = if s < 0, do: s + 16, else: s
-    new_left = for row <- 1..8, into: %{} do
-      l = Map.get(left, row, 0)
-      r = Map.get(right, row, 0)
-      combined = (l <<< 8) ||| r
-      rotated = (combined >>> s) ||| ((combined &&& ((1 <<< s) - 1)) <<< (16 - s))
-      {row, (rotated >>> 8) &&& 0xFF}
-    end
-    new_right = for row <- 1..8, into: %{} do
-      l = Map.get(left, row, 0)
-      r = Map.get(right, row, 0)
-      combined = (l <<< 8) ||| r
-      rotated = (combined >>> s) ||| ((combined &&& ((1 <<< s) - 1)) <<< (16 - s))
-      {row, rotated &&& 0xFF}
-    end
+
+    new_left =
+      for row <- 1..8, into: %{} do
+        l = Map.get(left, row, 0)
+        r = Map.get(right, row, 0)
+        combined = l <<< 8 ||| r
+        rotated = combined >>> s ||| (combined &&& (1 <<< s) - 1) <<< (16 - s)
+        {row, rotated >>> 8 &&& 0xFF}
+      end
+
+    new_right =
+      for row <- 1..8, into: %{} do
+        l = Map.get(left, row, 0)
+        r = Map.get(right, row, 0)
+        combined = l <<< 8 ||| r
+        rotated = combined >>> s ||| (combined &&& (1 <<< s) - 1) <<< (16 - s)
+        {row, rotated &&& 0xFF}
+      end
+
     {new_left, new_right}
   end
 
@@ -903,8 +1140,9 @@ defmodule SnakeBlockbreakerClock do
   defp stack_digits_led_right(top, bot) do
     top_map = Map.get(@digit_left, top, @digit_left[0])
     bot_map = Map.get(@digit_right, bot, @digit_right[0])
+
     for row <- 1..8, into: %{} do
-      t = Map.get(top_map, row-1, 0)
+      t = Map.get(top_map, row - 1, 0)
       b = Map.get(bot_map, row, 0)
       {row, t ||| b}
     end
@@ -913,9 +1151,10 @@ defmodule SnakeBlockbreakerClock do
   defp stack_digits_led_left(top, bot) do
     top_map = Map.get(@digit_left, top, @digit_left[0])
     bot_map = Map.get(@digit_right, bot, @digit_right[0])
+
     for row <- 1..8, into: %{} do
       t = Map.get(top_map, row, 0)
-      b = Map.get(bot_map, row+1, 0)
+      b = Map.get(bot_map, row + 1, 0)
       {row, t ||| b}
     end
   end
@@ -955,13 +1194,16 @@ defmodule SnakeBlockbreakerClock do
 
   defp effect_rain_fall(spi, col, row, cur, device) do
     checker = if rem(row, 2) == 0, do: 0b10101010, else: 0b01010101
-    frame = for r <- 1..8, into: %{} do
-      if r == row do
-        {r, Map.get(cur, r, 0) ||| checker}
-      else
-        {r, Map.get(cur, r, 0)}
+
+    frame =
+      for r <- 1..8, into: %{} do
+        if r == row do
+          {r, Map.get(cur, r, 0) ||| checker}
+        else
+          {r, Map.get(cur, r, 0)}
+        end
       end
-    end
+
     write_digit(spi, @digit_0, frame, device)
     Process.sleep(8)
     effect_rain_fall(spi, col, row + 1, cur, device)
@@ -969,11 +1211,14 @@ defmodule SnakeBlockbreakerClock do
 
   defp effect_rain_lock(spi, new, col, cur, device) do
     mask = 1 <<< (7 - col)
-    cur = for r <- 1..8, into: %{} do
-      existing = Map.get(cur, r, 0)
-      new_bit = Map.get(new, r, 0) &&& mask
-      {r, (existing &&& (~~~mask &&& 0xFF)) ||| new_bit}
-    end
+
+    cur =
+      for r <- 1..8, into: %{} do
+        existing = Map.get(cur, r, 0)
+        new_bit = Map.get(new, r, 0) &&& mask
+        {r, (existing &&& (~~~mask &&& 0xFF)) ||| new_bit}
+      end
+
     write_digit(spi, @digit_0, cur, device)
     Process.sleep(8)
     cur
@@ -999,13 +1244,16 @@ defmodule SnakeBlockbreakerClock do
 
   defp effect_rain_flow(spi, row, col, cur, device) do
     mask = 1 <<< (7 - col)
-    frame = for r <- 1..8, into: %{} do
-      if r == row do
-        {r, mask}
-      else
-        {r, Map.get(cur, r, 0)}
+
+    frame =
+      for r <- 1..8, into: %{} do
+        if r == row do
+          {r, mask}
+        else
+          {r, Map.get(cur, r, 0)}
+        end
       end
-    end
+
     write_digit(spi, @digit_0, frame, device)
     Process.sleep(8)
     effect_rain_flow(spi, row, col + 1, cur, device)
@@ -1022,17 +1270,21 @@ defmodule SnakeBlockbreakerClock do
   # scroll_up effect
   defp effect_scroll_up(spi, old, new, device) do
     for step <- 0..7 do
-      frame = for row <- 1..8, into: %{} do
-        src = row + step
-        if src <= 8 do
-          {row, Map.get(old, src, 0)}
-        else
-          {row, Map.get(new, src - 8, 0)}
+      frame =
+        for row <- 1..8, into: %{} do
+          src = row + step
+
+          if src <= 8 do
+            {row, Map.get(old, src, 0)}
+          else
+            {row, Map.get(new, src - 8, 0)}
+          end
         end
-      end
+
       write_digit(spi, @digit_0, frame, device)
       Process.sleep(20)
     end
+
     write_digit(spi, @digit_0, new, device)
   end
 end

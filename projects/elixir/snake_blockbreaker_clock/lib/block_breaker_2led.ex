@@ -925,6 +925,11 @@ defmodule BlockBreaker2Led do
             if is_pid(state.goverproc) do
               send(state.goverproc, :stop)
             end
+            if is_pid(state.joystick_pid) do
+              send(state.joystick_pid, :stop)
+            end
+            joystick_pid = spawn(__MODULE__, :joystick, [self(), @gpio_vrx, @gpio_vry])
+            state = %{state | joystick_pid: joystick_pid}
             GenServer.cast(self(), :reset_game)
             GenServer.cast(self(), :update_game)
             {:noreply, state}
