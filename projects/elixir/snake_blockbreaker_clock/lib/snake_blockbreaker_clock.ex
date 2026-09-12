@@ -116,6 +116,65 @@ defmodule SnakeBlockbreakerClock do
     @digit_7 => 0b00000000
   }
 
+  @clock_message %{
+    1 => 0b00000000,
+    2 => 0b00000000,
+    3 => 0b00000000,
+    4 => 0b00000000,
+    5 => 0b00000000,
+    6 => 0b00000000,
+    7 => 0b00000000,
+    8 => 0b00000000,
+    9 => 0b00000000,
+    10 => 0b00000000,
+    11 => 0b00000000,
+    12 => 0b00000000,
+    13 => 0b00000000,
+    14 => 0b00000000,
+    15 => 0b00000000,
+    16 => 0b00000000,
+    17 => 0b00000000,
+    18 => 0b01111110,
+    19 => 0b00010000,
+    20 => 0b00010000,
+    21 => 0b01111110,
+    22 => 0b00000000,
+    23 => 0b01111110,
+    24 => 0b01001010,
+    25 => 0b01001010,
+    26 => 0b01000010,
+    27 => 0b00000000,
+    28 => 0b01111110,
+    29 => 0b01000000,
+    30 => 0b01000000,
+    31 => 0b00000000,
+    32 => 0b01111110,
+    33 => 0b01000000,
+    34 => 0b01000000,
+    35 => 0b00000000,
+    36 => 0b00111100,
+    37 => 0b01000010,
+    38 => 0b01000010,
+    39 => 0b00111100,
+    40 => 0b00000000,
+    41 => 0b00000000,
+    42 => 0b00000000,
+    43 => 0b00000000,
+    44 => 0b00000000,
+    45 => 0b00000000,
+    46 => 0b00000000,
+    47 => 0b00000000,
+    48 => 0b00000000,
+    49 => 0b00000000,
+    50 => 0b00000000,
+    51 => 0b00000000,
+    52 => 0b00000000,
+    53 => 0b00000000,
+    54 => 0b00000000,
+    55 => 0b00000000,
+    56 => 0b00000000
+  }
+
   @spisettings [
     bus_config: [miso: 19, mosi: 27, sclk: 5],
     device_config: [
@@ -439,7 +498,7 @@ defmodule SnakeBlockbreakerClock do
     GPIO.set_pin_pull(@gpio_sw, :up)
 
     setup_adc()
-    wait_for_sntp(10)
+    wait_for_sntp(2)
     show_clock(pid)
 
     start_animation(pid)
@@ -636,7 +695,7 @@ defmodule SnakeBlockbreakerClock do
 
   defp show_clock(pid) do
     spi = GenServer.call(pid, :get_spi)
-    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0)
+    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0, nil, nil)
   end
 
   def display_clock(parent_pid, spi) do
@@ -644,7 +703,7 @@ defmodule SnakeBlockbreakerClock do
     GPIO.set_pin_pull(@gpio_sw, :up)
     :esp_adc.start(@gpio_vrx)
     :esp_adc.start(@gpio_vry)
-    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0)
+    clock_loop(spi, @empty_matrix, @empty_matrix, 0, @empty_matrix, @empty_matrix, 0, 0, 0, nil, nil)
     clear_display(spi)
     send(parent_pid, {:clock_done})
   end
@@ -654,7 +713,7 @@ defmodule SnakeBlockbreakerClock do
     GenServer.cast(pid, {:set_goverproc, new_proc})
   end
 
-  defp clock_loop(spi, prev_left, prev_right, tick, disp_left, disp_right, shift_x, shift_y, blink_count) do
+  defp clock_loop(spi, prev_left, prev_right, tick, disp_left, disp_right, shift_x, shift_y, blink_count, message_offset, message_step) do
     receive do
       :stop -> :ok
     after
@@ -692,7 +751,37 @@ defmodule SnakeBlockbreakerClock do
             end
 
           {new_shift_x, new_shift_y} = read_joystick_shifts(shift_x, shift_y)
-          {new_disp_left, new_disp_right} = apply_shifts(time_left, time_right, new_shift_x, new_shift_y)
+
+          if shift_y == 0 and new_shift_y < 0 do
+            effect_rain(spi, @empty_matrix, time_left, :device_1)
+            effect_rain(spi, @empty_matrix, time_right, :device_2)
+          end
+
+          {new_message_offset, new_message_step} =
+            if is_nil(message_offset) and new_shift_x < 0 do
+              {0, 1}
+            else
+              if is_nil(message_offset) and new_shift_x > 0 do
+                {46, -1}
+              else
+                case {message_offset, message_step} do
+                  {nil, _} -> {nil, nil}
+                  {_offset, _step} when new_shift_x == 0 -> {nil, nil}
+                  {offset, 1} when offset < 62 -> {offset + 1, 1}
+                  {62, 1} -> {0, 1}
+                  {offset, -1} when offset > 0 -> {offset - 1, -1}
+                  {0, -1} -> {46, -1}
+                  _ -> {nil, nil}
+                end
+              end
+            end
+
+          {new_disp_left, new_disp_right} =
+            if is_integer(new_message_offset) do
+              clock_message_frame(new_message_offset)
+            else
+              apply_shifts(time_left, time_right, new_shift_x, new_shift_y)
+            end
 
           blink_bit = 0b00000001
           blink_on? = rem(blink_count, 10) < 5
@@ -707,17 +796,30 @@ defmodule SnakeBlockbreakerClock do
           end
 
           Process.sleep(50)
-          clock_loop(spi, time_left, time_right, new_tick, new_disp_left, new_disp_right, new_shift_x, new_shift_y, blink_count + 1)
+          clock_loop(spi, time_left, time_right, new_tick, new_disp_left, new_disp_right, new_shift_x, new_shift_y, blink_count + 1, new_message_offset, new_message_step)
         end
     end
   end
 
+  defp clock_message_frame(offset) do
+    data1 = clock_message_data(@empty_matrix, 1, offset)
+    data2 = clock_message_data(@empty_matrix, 1, offset + 8)
+    {data1, data2}
+  end
+
+  defp clock_message_data(result, 9, _offset), do: result
+
+  defp clock_message_data(result, row, offset) do
+    value = Map.get(@clock_message, row + offset, 0)
+    clock_message_data(Map.put(result, row, value), row + 1, offset)
+  end
+
   defp read_joystick_shifts(shift_x, shift_y) do
-    {:ok, x} = case :esp_adc.read(@gpio_vry) do
+    {:ok, x} = case :esp_adc.read(@gpio_vrx) do
       {:ok, {raw, _}} -> {:ok, raw}
       other -> other
     end
-    {:ok, y} = case :esp_adc.read(@gpio_vrx) do
+    {:ok, y} = case :esp_adc.read(@gpio_vry) do
       {:ok, {raw, _}} -> {:ok, raw}
       other -> other
     end
@@ -729,15 +831,15 @@ defmodule SnakeBlockbreakerClock do
     cond do
       x_dev > y_dev and x_dev > min_dev and x < @low_range -> {shift_x - 1, 0}
       x_dev > y_dev and x_dev > min_dev and x > @high_range -> {shift_x + 1, 0}
-      y_dev > x_dev and y_dev > min_dev and y < @low_range -> {0, shift_y - 1}
-      y_dev > x_dev and y_dev > min_dev and y > @high_range -> {0, shift_y + 1}
+      y_dev > x_dev and y_dev > min_dev and y < @low_range -> {0, shift_y + 1}
+      y_dev > x_dev and y_dev > min_dev and y > @high_range -> {0, shift_y - 1}
       true -> {0, 0}
     end
   end
 
-  defp apply_shifts(left, right, shift_x, shift_y) do
+  defp apply_shifts(left, right, shift_x, _shift_y) do
     {shifted_left, shifted_right} = tilt_cols_coupled(left, right, shift_x)
-    {tilt_rows(shifted_left, shift_y), tilt_rows(shifted_right, shift_y)}
+    {shifted_left, shifted_right}
   end
 
   defp tilt_cols_coupled(left, right, 0), do: {left, right}
