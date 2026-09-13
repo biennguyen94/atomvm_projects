@@ -32,6 +32,9 @@ defmodule SnakeBlockbreakerClock do
   ## Features
   - Animated game selection screen with snake (LED 0) and breaker (LED 1) icons scrolling
   - Joystick-based game selection (left = Snake, right = Block Breaker)
+  - Clock with joystick effects, up/down gestures and scrolling messages
+  - Joystick UP cycles display modes: time (HH:MM) → solar date (day/month) →
+    Vietnamese lunar date âm lịch (day/month) → time
   - Initializes 2 MAX7219 modules on separate SPI chip-select lines (CS=18 for device_1,
     CS=23 for device_2 – note device_2 uses a different CS than the game modules)
   - Configures both MAX7219: no decode, intensity 3, scan limit 8, shutdown off, test off
@@ -294,7 +297,7 @@ defmodule SnakeBlockbreakerClock do
     ]
   ]
 
-  defstruct [:spi, :goverproc]
+  defstruct [:spi, :goverproc, :slot]
 
   @digit_left %{
     0 => %{
@@ -588,7 +591,75 @@ defmodule SnakeBlockbreakerClock do
     40 => 0b00000011
   }
 
+@select_game_flappy %{
+    1 => 0b00000000,
+    2 => 0b00000000,
+    3 => 0b00010000,
+    4 => 0b00010000,
+    5 => 0b00000000,
+    6 => 0b00000000,
+    7 => 0b00000000,
+    8 => 0b10000111,
+    9 => 0b00000000,
+    10 => 0b00000000,
+    11 => 0b00100000,
+    12 => 0b00100000,
+    13 => 0b00000000,
+    14 => 0b00000000,
+    15 => 0b10000111,
+    16 => 0b00000000,
+    17 => 0b00000000,
+    18 => 0b00000000,
+    19 => 0b01000000,
+    20 => 0b01000000,
+    21 => 0b00000000,
+    22 => 0b10000111,
+    23 => 0b00000000,
+    24 => 0b00000000,
+    25 => 0b00000000,
+    26 => 0b00000000,
+    27 => 0b01000000,
+    28 => 0b01000000,
+    29 => 0b10000111,
+    30 => 0b00000000,
+    31 => 0b00000000,
+    32 => 0b00000000,
+    33 => 0b00000000,
+    34 => 0b00000000,
+    35 => 0b00100000,
+    36 => 0b10100111,
+    37 => 0b00000000,
+    38 => 0b00000000,
+    39 => 0b00000000,
+    40 => 0b00000000,
+    41 => 0b00000000,
+    42 => 0b00000000,
+    43 => 0b10010111,
+    44 => 0b00010000,
+    45 => 0b00000000,
+    46 => 0b00000000,
+    47 => 0b00000000,
+    48 => 0b00000000,
+    49 => 0b00000000,
+    50 => 0b10000111,
+    51 => 0b00010000,
+    52 => 0b00010000,
+    53 => 0b00000000,
+    54 => 0b00000000,
+    55 => 0b00000000,
+    56 => 0b00000000,
+    57 => 0b10000111,
+    58 => 0b00000000,
+    59 => 0b00010000,
+    60 => 0b00010000,
+    61 => 0b00000000,
+    62 => 0b00000000,
+    63 => 0b00000000,
+    64 => 0b00000000
+  }
+
   def start do
+    IO.puts("SnakeBlockbreakerClock: starting")
     :erlang.system_flag(:schedulers_online, 2)
 
     try do
@@ -612,6 +683,7 @@ defmodule SnakeBlockbreakerClock do
 
     setup_adc()
     wait_for_sntp(2)
+    IO.puts("start: showing clock")
     show_clock(pid)
 
     start_animation(pid)
@@ -621,7 +693,7 @@ defmodule SnakeBlockbreakerClock do
   def init(_) do
     {:ok, spi} = init_max7219(@spisettings)
     IO.puts("Init SPI and MAX7219 OK\n")
-    new_state = %__MODULE__{spi: spi, goverproc: nil}
+    new_state = %__MODULE__{spi: spi, goverproc: nil, slot: :snake}
     {:ok, new_state}
   end
 
@@ -637,16 +709,25 @@ defmodule SnakeBlockbreakerClock do
     {:noreply, %{state | goverproc: proc}}
   end
 
+  def handle_cast({:set_slot, slot}, state) do
+    {:noreply, %{state | slot: slot}}
+  end
+
   def handle_cast(:game_over, state) do
     IO.puts("parent game_over\n")
+    :timer.sleep(300)
+    setup_adc()
+    GPIO.set_pin_mode(@gpio_sw, :input)
+    GPIO.set_pin_pull(@gpio_sw, :up)
     new_proc = spawn(__MODULE__, :display_select_game, [self(), 0])
     spawn(__MODULE__, :select_game, [self(), @gpio_vrx])
-    new_state = %{state | goverproc: new_proc}
+    new_state = %{state | goverproc: new_proc, slot: :snake}
     {:noreply, new_state}
   end
 
   def handle_cast({:exit_to_clock}, state) do
     IO.puts("parent: exiting to clock mode")
+    :timer.sleep(300)
 
     if is_pid(state.goverproc) do
       send(state.goverproc, :stop)
@@ -660,12 +741,12 @@ defmodule SnakeBlockbreakerClock do
   def handle_info({:clock_done}, state) do
     IO.puts("parent: clock done, starting game selection")
     new_proc = spawn(__MODULE__, :display_select_game, [self(), 0])
-    spawn(__MODULE__, :select_game, [self(), @gpio_vrx, :wait_for_neutral])
-    {:noreply, %{state | goverproc: new_proc}}
+    spawn(__MODULE__, :select_game, [self(), @gpio_vrx, :wait_for_neutral, :snake])
+    {:noreply, %{state | goverproc: new_proc, slot: :snake}}
   end
 
   def handle_cast({:display_select_game_flag, times}, state) do
-    display_game_text(state.spi, times)
+    display_game_text(state.spi, times, state.slot)
     {:noreply, state}
   end
 
@@ -690,67 +771,125 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp select_game(pid, adcx) do
-    select_game(pid, adcx, :ready)
+    select_game(pid, adcx, :ready, :snake)
   end
 
   def select_game(pid, adcx, :wait_for_neutral) do
-    {:ok, x} = read_adc(adcx)
+    select_game(pid, adcx, :wait_for_neutral, :snake)
+  end
 
-    if x >= @low_range and x <= @high_range do
-      select_game(pid, adcx, :ready)
+  def select_game(pid, adcx, :wait_for_neutral, slot) do
+    :timer.sleep(@delay_read_adc)
+
+    if joystick_neutral?(adcx) do
+      select_game(pid, adcx, :ready, slot)
     else
-      :timer.sleep(@delay_read_adc)
-      select_game(pid, adcx, :wait_for_neutral)
+      select_game(pid, adcx, :wait_for_neutral, slot)
     end
   end
 
-  def select_game(pid, adcx, :ready) do
+  def select_game(pid, adcx, :ready, slot) do
+    :timer.sleep(@delay_read_adc)
+
+    tilt =
+      if button_pressed?() do
+        :button
+      else
+        read_tilt(adcx)
+      end
+
+    case tilt do
+      :button ->
+        IO.puts("select_game: button pressed -> starting #{slot}")
+        start_game(pid, adcx, slot)
+
+      :none ->
+        select_game(pid, adcx, :ready, slot)
+
+      direction ->
+        new_slot = next_slot(slot, direction)
+        IO.puts("select_game: slot #{slot} -> #{new_slot} (joystick #{direction})")
+        GenServer.cast(pid, {:set_slot, new_slot})
+        select_game(pid, adcx, :wait_for_neutral, new_slot)
+    end
+  end
+
+  defp read_tilt(adcx) do
     {:ok, x} = read_adc(adcx)
+    {:ok, y} = read_adc(@gpio_vry)
 
     cond do
-      x < @low_range ->
-        send(pid, {self(), :do_select_game})
-
-        receive do
-          {:spi, spi} -> SnakeGame2Led.start(spi)
-        end
-
-      x > @high_range ->
-        send(pid, {self(), :do_select_game})
-
-        receive do
-          {:spi, spi} -> BlockBreaker2Led.start(spi)
-        end
-
-      true ->
-        :timer.sleep(@delay_read_adc)
-        select_game(pid, adcx)
+      x < @low_range -> :left
+      x > @high_range -> :right
+      y < @low_range -> :down
+      y > @high_range -> :up
+      true -> :none
     end
   end
+
+  defp joystick_neutral?(adcx) do
+    read_tilt(adcx) == :none
+  end
+
+  defp next_slot(:snake, :right), do: :breaker
+  defp next_slot(:breaker, :right), do: :flappy
+  defp next_slot(:flappy, :right), do: :snake
+  defp next_slot(:snake, :left), do: :flappy
+  defp next_slot(:breaker, :left), do: :snake
+  defp next_slot(:flappy, :left), do: :breaker
+  defp next_slot(_slot, :down), do: :flappy
+  defp next_slot(_slot, :up), do: :snake
+
+  defp start_game(pid, _adcx, slot) do
+    send(pid, {self(), :do_select_game})
+
+    receive do
+      {:spi, spi} -> start_selected_game(spi, slot)
+    end
+  end
+
+  defp start_selected_game(spi, :breaker), do: BlockBreaker2Led.start(spi)
+  defp start_selected_game(spi, :flappy), do: FlappyBird2Led.start(spi)
+  defp start_selected_game(spi, _slot), do: SnakeGame2Led.start(spi)
 
   def display_select_game(p, times) do
     receive do
       :stop -> :ok
     after
-      800 ->
+      100 ->
         GenServer.cast(p, {:display_select_game_flag, times})
-
-        new_times =
-          if times + 8 > 32 do
-            0
-          else
-            times + 8
-          end
-
+        new_times = rem(times + 1, 64)
         display_select_game(p, new_times)
     end
   end
 
-  defp display_game_text(spi, times) do
-    data1 = get_data(@empty_matrix, 1, times, :snake)
-    data2 = get_data(@empty_matrix, 1, times, :breaker)
+  defp display_game_text(spi, times, slot) do
+    frame = rem(div(times, 8), 8) * 8
+    data1 = select_menu_matrix(times, slot)
+    data2 = get_data(@empty_matrix, 1, frame, slot)
     write_digit(spi, @digit_0, data1, :device_1)
     write_digit(spi, @digit_0, data2, :device_2)
+  end
+
+  defp select_menu_matrix(times, slot) do
+    active_row =
+      case slot do
+        :breaker -> 4
+        :flappy -> 7
+        _ -> 1
+      end
+
+    menu =
+      @empty_matrix
+      |> Map.put(1, 0b10000000)
+      |> Map.put(4, 0b10000000)
+      |> Map.put(7, 0b10000000)
+
+    if rem(times, 4) < 2 do
+      menu
+    else
+      Map.put(menu, active_row, 0)
+    end
   end
 
   defp setup_adc() do
@@ -796,6 +935,12 @@ defmodule SnakeBlockbreakerClock do
     row = Map.get(@select_game_breaker, number + times)
     new_result = Map.put(result, number, row)
     get_data(new_result, number + 1, times, :breaker)
+  end
+
+  defp get_data(result, number, times, :flappy) do
+    row = Map.get(@select_game_flappy, number + times)
+    new_result = Map.put(result, number, row)
+    get_data(new_result, number + 1, times, :flappy)
   end
 
   defp write_digit(spi, 8, data, device) do
@@ -847,7 +992,8 @@ defmodule SnakeBlockbreakerClock do
       0,
       0,
       nil,
-      nil
+      nil,
+      0
     )
   end
 
@@ -868,11 +1014,39 @@ defmodule SnakeBlockbreakerClock do
       0,
       0,
       nil,
-      nil
+      nil,
+      0
     )
 
     clear_display(spi)
     send(parent_pid, {:clock_done})
+  end
+
+  defp date_display do
+    epoch_ms = :erlang.system_time(:millisecond)
+    local_ms = epoch_ms + @timezone_offset_ms
+
+    {{_year, month, day}, {_hour, _minute, _second}} =
+      :calendar.system_time_to_universal_time(local_ms, :millisecond)
+
+    date_left = stack_digits_led_left(div(day, 10), rem(day, 10))
+    date_right = stack_digits_led_right(div(month, 10), rem(month, 10))
+    {date_left, date_right}
+  end
+
+  defp lunar_date_display do
+    epoch_ms = :erlang.system_time(:millisecond)
+    local_ms = epoch_ms + @timezone_offset_ms
+
+    {{year, month, day}, {_hour, _minute, _second}} =
+      :calendar.system_time_to_universal_time(local_ms, :millisecond)
+
+    {lunar_day, lunar_month, _lunar_year, _is_leap} =
+      SnakeBlockbreakerClock.LunarDate.convert_solar_to_lunar(day, month, year)
+
+    lunar_left = stack_digits_led_left(div(lunar_day, 10), rem(lunar_day, 10))
+    lunar_right = stack_digits_led_right(div(lunar_month, 10), rem(lunar_month, 10))
+    {lunar_left, lunar_right}
   end
 
   defp start_animation(pid) do
@@ -891,13 +1065,15 @@ defmodule SnakeBlockbreakerClock do
          shift_y,
          blink_count,
          message_offset,
-         message_step
+         message_step,
+         date_mode
        ) do
     receive do
       :stop -> :ok
     after
       0 ->
         if button_pressed?() do
+          IO.puts("clock: button pressed, exiting clock mode")
           :ok
         else
           {time_left, time_right, new_tick} =
@@ -916,12 +1092,14 @@ defmodule SnakeBlockbreakerClock do
               new_left = stack_digits_led_left(hour_tens, hour_ones)
               new_right = stack_digits_led_right(mins_tens, mins_ones)
 
-              if new_left != prev_left do
-                apply_effect(spi, prev_left, new_left, :device_1, rem(hour, 3))
+              if date_mode == 0 do
+if new_left != prev_left do
+                apply_effect(spi, prev_left, new_left, :device_1, clock_effect(prev_left, hour))
               end
 
               if new_right != prev_right do
-                apply_effect(spi, prev_right, new_right, :device_2, rem(minute, 3))
+                apply_effect(spi, prev_right, new_right, :device_2, clock_effect(prev_right, minute))
+              end
               end
 
               IO.puts("Clock: #{pad(hour)}:#{pad(minute)}")
@@ -932,56 +1110,74 @@ defmodule SnakeBlockbreakerClock do
 
           {new_shift_x, new_shift_y} = read_joystick_shifts(shift_x, shift_y)
 
-          if shift_y == 0 and new_shift_y < 0 do
-            effect_rain(spi, @empty_matrix, time_left, :device_1)
-            effect_rain(spi, @empty_matrix, time_right, :device_2)
-          end
+          fresh_press = (shift_x == 0 and shift_y == 0) and (new_shift_x != 0 or new_shift_y != 0)
 
           {new_message_offset, new_message_step} =
-            if is_nil(message_offset) and is_nil(message_step) and new_shift_x < 0 do
-              if new_shift_y > 0 do
-                {0, 2}
+            cond do
+              fresh_press and new_shift_x < 0 and new_shift_y == 0 -> {0, 2}
+              fresh_press and new_shift_x > 0 and new_shift_y == 0 -> {0, 2}
+              fresh_press -> {nil, nil}
+              is_integer(message_offset) and
+                  message_offset < clock_message_end_offset(message_step) ->
+                {message_offset + message_speed(message_step, message_offset), message_step}
+
+              is_integer(message_offset) -> {nil, nil}
+              true -> {nil, nil}
+            end
+
+          new_date_mode =
+            if is_nil(new_message_offset) and is_nil(new_message_step) do
+              if shift_y == 0 and new_shift_y < 0 do
+                IO.puts("clock: joystick UP -> toggle display mode #{date_mode}")
+                rem(date_mode + 1, 3)
               else
-                {0, 1}
-              end
-            else
-              if is_nil(message_offset) and is_nil(message_step) and new_shift_x > 0 do
-                {@clock_message_end_offset, -1}
-              else
-                case {message_offset, message_step} do
-                  {nil, :wait_for_neutral} when new_shift_x == 0 and new_shift_y == 0 -> {nil, nil}
-                  {nil, :wait_for_neutral} -> {nil, :wait_for_neutral}
-                  {nil, _} -> {nil, nil}
-                  {offset, 2} when new_shift_x < 0 and new_shift_y > 0 and offset < @creator_message_end_offset -> {offset + 1, 2}
-                  {@creator_message_end_offset, 2} when new_shift_x < 0 and new_shift_y > 0 -> {0, 2}
-                  {offset, 2} when new_shift_x == 0 and new_shift_y == 0 and offset < @creator_message_end_offset -> {offset + 1, 2}
-                  {@creator_message_end_offset, 2} when new_shift_x == 0 and new_shift_y == 0 -> {0, 2}
-                  {_offset, 2} when new_shift_x == 0 and new_shift_y != 0 -> {nil, nil}
-                  {_offset, 2} -> {nil, :wait_for_neutral}
-                  {_offset, _step} when new_shift_x == 0 -> {nil, nil}
-                  {offset, 1} when offset < @clock_message_end_offset -> {offset + 1, 1}
-                  {@clock_message_end_offset, 1} -> {0, 1}
-                  {offset, 2} when offset < @creator_message_end_offset -> {offset + 1, 2}
-                  {@creator_message_end_offset, 2} -> {0, 2}
-                  {offset, -1} when offset > 0 -> {offset - 1, -1}
-                  {0, -1} -> {@clock_message_end_offset, -1}
-                  _ -> {nil, nil}
+                if shift_y == 0 and new_shift_y > 0 do
+                  IO.puts("clock: joystick DOWN -> toggle display mode back #{date_mode}")
+                  rem(date_mode + 2, 3)
+                else
+                  date_mode
                 end
               end
+            else
+              date_mode
             end
+
+          if fresh_press and new_shift_x > 0 and new_shift_y == 0 do
+            IO.puts("clock: joystick RIGHT -> show creator")
+          end
+
+          if fresh_press and new_shift_x < 0 and new_shift_y == 0 do
+            IO.puts("clock: joystick LEFT -> show creator")
+          end
+
+          if is_nil(message_offset) and is_integer(new_message_offset) do
+            case new_message_step do
+              1 -> IO.puts("clock: message start: clock (forward)")
+              2 -> IO.puts("clock: message start: creator (forward)")
+              _ -> :ok
+            end
+          end
+
+          if is_integer(message_offset) and is_nil(new_message_offset) do
+            IO.puts("clock: message stopped")
+          end
 
           {new_disp_left, new_disp_right} =
             if is_integer(new_message_offset) do
               clock_message_frame(new_message_offset, new_message_step)
             else
-              apply_shifts(time_left, time_right, new_shift_x, new_shift_y)
+              case new_date_mode do
+                1 -> date_display()
+                2 -> lunar_date_display()
+                _ -> {time_left, time_right}
+              end
             end
 
           blink_bit = 0b00000001
           blink_on? = rem(blink_count, 10) < 5
 
           row8 =
-            if new_message_step == 2 do
+            if new_message_step == 2 or new_date_mode != 0 do
               Map.get(new_disp_left, 8, 0)
             else
               (Map.get(new_disp_left, 8, 0) &&& ~~~blink_bit) |||
@@ -991,7 +1187,7 @@ defmodule SnakeBlockbreakerClock do
           new_disp_left = Map.put(new_disp_left, 8, row8)
 
           row1 =
-            if new_message_step == 2 do
+            if new_message_step == 2 or new_date_mode != 0 do
               Map.get(new_disp_right, 1, 0)
             else
               (Map.get(new_disp_right, 1, 0) &&& ~~~blink_bit) |||
@@ -1018,7 +1214,8 @@ defmodule SnakeBlockbreakerClock do
             new_shift_y,
             blink_count + 1,
             new_message_offset,
-            new_message_step
+            new_message_step,
+            new_date_mode
           )
         end
     end
@@ -1029,6 +1226,18 @@ defmodule SnakeBlockbreakerClock do
     data2 = clock_message_data(@empty_matrix, 1, offset + 8, message_step)
     {data1, data2}
   end
+
+  defp clock_message_end_offset(2), do: @creator_message_end_offset
+  defp clock_message_end_offset(_), do: @clock_message_end_offset
+
+  defp message_speed(2, offset) do
+    case rem(offset, 4) do
+      0 -> 2
+      _ -> 1
+    end
+  end
+
+  defp message_speed(_step, _offset), do: 1
 
   defp clock_message_data(result, 9, _offset, _message_step), do: result
 
@@ -1082,47 +1291,6 @@ defmodule SnakeBlockbreakerClock do
     end
   end
 
-  defp apply_shifts(left, right, shift_x, _shift_y) do
-    {shifted_left, shifted_right} = tilt_cols_coupled(left, right, shift_x)
-    {shifted_left, shifted_right}
-  end
-
-  defp tilt_cols_coupled(left, right, 0), do: {left, right}
-
-  defp tilt_cols_coupled(left, right, shift) do
-    s = rem(shift, 16)
-    s = if s < 0, do: s + 16, else: s
-
-    new_left =
-      for row <- 1..8, into: %{} do
-        l = Map.get(left, row, 0)
-        r = Map.get(right, row, 0)
-        combined = l <<< 8 ||| r
-        rotated = combined >>> s ||| (combined &&& (1 <<< s) - 1) <<< (16 - s)
-        {row, rotated >>> 8 &&& 0xFF}
-      end
-
-    new_right =
-      for row <- 1..8, into: %{} do
-        l = Map.get(left, row, 0)
-        r = Map.get(right, row, 0)
-        combined = l <<< 8 ||| r
-        rotated = combined >>> s ||| (combined &&& (1 <<< s) - 1) <<< (16 - s)
-        {row, rotated &&& 0xFF}
-      end
-
-    {new_left, new_right}
-  end
-
-  defp tilt_rows(data, 0), do: data
-
-  defp tilt_rows(data, shift) do
-    for row <- 1..8, into: %{} do
-      src = Integer.mod(row - shift - 1, 8) + 1
-      {row, Map.get(data, src, 0)}
-    end
-  end
-
   defp button_pressed? do
     GPIO.digital_read(@gpio_sw) == :low
   rescue
@@ -1136,6 +1304,9 @@ defmodule SnakeBlockbreakerClock do
 
   defp pad(n) when n < 10, do: "0#{n}"
   defp pad(n), do: Integer.to_string(n)
+
+  defp clock_effect(@empty_matrix, _n), do: 2
+  defp clock_effect(_prev, n), do: rem(n, 3)
 
   defp stack_digits_led_right(top, bot) do
     top_map = Map.get(@digit_left, top, @digit_left[0])

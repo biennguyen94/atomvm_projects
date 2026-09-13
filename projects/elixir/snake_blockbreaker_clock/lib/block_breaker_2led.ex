@@ -780,10 +780,22 @@ defmodule BlockBreaker2Led do
     GPIO.set_pin_pull(@gpio_sw, :up)
     gpio = GPIO.open()
     GPIO.set_int(gpio, @gpio_sw, :both)
-    new_proc = spawn(__MODULE__, :welcome_block_breaker_game_process, [self(), 0])
-    state = %__MODULE__{spi: spi, goverproc: new_proc, isgameover: true, button_press_time: nil}
+    state = %__MODULE__{
+      spi: spi,
+      crossbar: @cross_bar,
+      ball: @ball,
+      direction: {-1, 1},
+      point: @default_point,
+      data1: @empty_matrix,
+      data2: @empty_matrix,
+      isgameover: false,
+      goverproc: nil,
+      score: 0,
+      joystick_pid: nil,
+      button_press_time: nil
+    }
     :io.format("Init SPI and MAX7219 OK ~p ~n", [@cross_bar])
-    {:ok, state}
+    {:ok, draw_game(state)}
   end
 
   def handle_call(_msg, _from, state) do
@@ -795,13 +807,16 @@ defmodule BlockBreaker2Led do
   end
 
   def handle_cast(:update_game, state) do
+    {:noreply, draw_game(state)}
+  end
+
+  defp draw_game(state) do
     {temp1, temp2} = update_data(state.crossbar, {state.data1, state.data2}, 0, 3)
     {temp3, temp4} = update_data(state.ball, {temp1, temp2}, 0, 1)
     {temp5, temp6} = update_data(state.point, {temp3, temp4}, 0, @max_point)
     write_digit(state.spi, @digit_0, temp5, :device_1)
     write_digit(state.spi, @digit_0, temp6, :device_2)
-    new_state = %{state | data1: temp5, data2: temp6}
-    {:noreply, new_state}
+    %{state | data1: temp5, data2: temp6}
   end
 
   def handle_cast(:reset_game, state) do
@@ -845,36 +860,28 @@ defmodule BlockBreaker2Led do
       ball = Map.get(state.ball, 0)
       {new_ball, new_direc, game_over, new_point, new_score} =
         move_ball(ball, state.direction, state.crossbar, state.point, state.score)
-      new_state =
-        if game_over do
-          IO.puts("GAME OVER")
-          send(self(), :stop_peripherals)
-          :timer.sleep(500)
-          {data1, data2} = handle_game_over(state.score)
+
+      if game_over do
+        IO.puts("block breaker: GAME OVER")
+        {data1, data2} = handle_game_over(state.score)
+        write_digit(state.spi, @digit_0, data1, :device_1)
+        write_digit(state.spi, @digit_0, data2, :device_2)
+        {:noreply, %{state | isgameover: true}}
+      else
+        if new_score == @max_point do
+          IO.puts("block breaker: GAME WIN")
+          {data1, data2} = handle_game_over(new_score)
           write_digit(state.spi, @digit_0, data1, :device_1)
           write_digit(state.spi, @digit_0, data2, :device_2)
-          :timer.sleep(2000)
-          new_proc = spawn(__MODULE__, :game_over_process, [self(), 0, 0])
-          %{state | isgameover: true, goverproc: new_proc}
+          {:noreply, %{state | isgameover: true, score: new_score}}
         else
-          if new_score == @max_point do
-            IO.puts("GAME WIN")
-            send(self(), :stop_peripherals)
-            :timer.sleep(500)
-            {data1, data2} = handle_game_over(new_score)
-            write_digit(state.spi, @digit_0, data1, :device_1)
-            write_digit(state.spi, @digit_0, data2, :device_2)
-            :timer.sleep(2000)
-            new_proc = spawn(__MODULE__, :game_win_process, [self(), 0])
-            %{state | isgameover: true, goverproc: new_proc}
-          else
-            {data1, data2} = update_ball(new_ball, ball, state.data1, state.data2)
-            write_digit(state.spi, @digit_0, data1, :device_1)
-            write_digit(state.spi, @digit_0, data2, :device_2)
-            %{state | ball: %{0 => new_ball}, data1: data1, data2: data2, direction: new_direc, point: new_point, score: new_score}
-          end
+          {data1, data2} = update_ball(new_ball, ball, state.data1, state.data2)
+          write_digit(state.spi, @digit_0, data1, :device_1)
+          write_digit(state.spi, @digit_0, data2, :device_2)
+          new_state = %{state | ball: %{0 => new_ball}, data1: data1, data2: data2, direction: new_direc, point: new_point, score: new_score}
+          {:noreply, new_state}
         end
-      {:noreply, new_state}
+      end
     end
   end
 

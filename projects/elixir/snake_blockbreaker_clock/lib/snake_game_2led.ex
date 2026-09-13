@@ -681,8 +681,22 @@ defmodule SnakeGame2Led do
     gpio = GPIO.open()
     GPIO.set_int(gpio, @gpio_sw, :both)
     IO.puts("Init SPI and MAX7219 OK\n")
-    new_proc = spawn(__MODULE__, :welcome_snake_game_process, [self(), 0])
-    new_state = %__MODULE__{spi: spi, gameover: true, goverproc: new_proc, button_press_time: nil}
+    {snake_head, snake_body, food, {data1, data2}} = init_snake(spi, @body)
+    new_state = %__MODULE__{
+      spi: spi,
+      snakehead: snake_head,
+      snakebody: snake_body,
+      snakelen: @snake_length,
+      food: food,
+      direction: @direction,
+      data1: data1,
+      data2: data2,
+      gameover: false,
+      goverproc: nil,
+      joystick_pid: nil,
+      blink_pid: nil,
+      button_press_time: nil
+    }
     {:ok, new_state}
   end
 
@@ -714,13 +728,14 @@ defmodule SnakeGame2Led do
   end
 
   def handle_cast(:move, state) do
-    new_state =
-      if state.gameover do
-        state
-      else
-        move_snake(state)
+    if state.gameover do
+      {:noreply, state}
+    else
+      case move_snake(state) do
+        {:stop, new_state} -> {:stop, :normal, new_state}
+        {:ok, new_state} -> {:noreply, new_state}
       end
-    {:noreply, new_state}
+    end
   end
 
   def handle_cast({:display_game_over, times}, state) do
@@ -953,17 +968,14 @@ defmodule SnakeGame2Led do
       end
     status = is_game_over(new_snake_head, new_snake_body, new_snake_len - 1, 0)
     if status do
-      send(self(), :stop_peripherals)
+      IO.puts("snake: GAME OVER")
       if is_pid(state.blink_pid) do
         send(state.blink_pid, :stop)
       end
-      :timer.sleep(500)
       {data1, data2} = handle_game_over(state.snakelen)
       write_digit(state.spi, @digit_0, data1, :device_1)
       write_digit(state.spi, @digit_0, data2, :device_2)
-      :timer.sleep(2000)
-      new_proc = spawn(__MODULE__, :game_over_process, [self(), 0, 0])
-      %{state | gameover: true, goverproc: new_proc}
+      {:ok, %{state | gameover: true, blink_pid: nil}}
     else
       old_tail = Map.get(state.snakebody, 0)
 
@@ -995,15 +1007,16 @@ defmodule SnakeGame2Led do
         else
           {data1, data2}
         end
-      %{
-        state |
-        snakehead: new_snake_head,
-        snakebody: new_snake_body,
-        snakelen: new_snake_len,
-        food: new_food,
-        data1: data1,
-        data2: data2
-      }
+      {:ok,
+       %{
+         state |
+         snakehead: new_snake_head,
+         snakebody: new_snake_body,
+         snakelen: new_snake_len,
+         food: new_food,
+         data1: data1,
+         data2: data2
+       }}
     end
   end
 
