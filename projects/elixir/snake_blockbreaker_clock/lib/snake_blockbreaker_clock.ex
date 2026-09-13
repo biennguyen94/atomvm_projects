@@ -631,31 +631,31 @@ defmodule SnakeBlockbreakerClock do
     37 => 0b00000000,
     38 => 0b00000000,
     39 => 0b00000000,
-    40 => 0b00000000,
+40 => 0b00000000,
     41 => 0b00000000,
     42 => 0b00000000,
     43 => 0b10010111,
-    44 => 0b00010000,
-    45 => 0b00000000,
-    46 => 0b00000000,
-    47 => 0b00000000,
-    48 => 0b00000000,
-    49 => 0b00000000,
-    50 => 0b10000111,
-    51 => 0b00010000,
-    52 => 0b00010000,
-    53 => 0b00000000,
-    54 => 0b00000000,
-    55 => 0b00000000,
-    56 => 0b00000000,
-    57 => 0b10000111,
-    58 => 0b00000000,
-    59 => 0b00010000,
-    60 => 0b00010000,
-    61 => 0b00000000,
-    62 => 0b00000000,
-    63 => 0b00000000,
-    64 => 0b00000000
+     44 => 0b00010000,
+     45 => 0b00000000,
+     46 => 0b00000000,
+     47 => 0b00000000,
+     48 => 0b00000000,
+     49 => 0b00000000,
+     50 => 0b10000111,
+     51 => 0b00010000,
+     52 => 0b00010000,
+     53 => 0b00000000,
+     54 => 0b00000000,
+     55 => 0b00000000,
+     56 => 0b00000000,
+     57 => 0b10000111,
+     58 => 0b00000000,
+     59 => 0b00010000,
+     60 => 0b00010000,
+     61 => 0b00000000,
+     62 => 0b00000000,
+     63 => 0b00000000,
+     64 => 0b10000111
   }
 
   def start do
@@ -771,7 +771,7 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp select_game(pid, adcx) do
-    select_game(pid, adcx, :ready, :snake)
+    select_game(pid, adcx, :wait_for_neutral, :snake)
   end
 
   def select_game(pid, adcx, :wait_for_neutral) do
@@ -781,7 +781,7 @@ defmodule SnakeBlockbreakerClock do
   def select_game(pid, adcx, :wait_for_neutral, slot) do
     :timer.sleep(@delay_read_adc)
 
-    if joystick_neutral?(adcx) do
+    if not button_pressed?() and joystick_neutral?(adcx) do
       select_game(pid, adcx, :ready, slot)
     else
       select_game(pid, adcx, :wait_for_neutral, slot)
@@ -858,18 +858,26 @@ defmodule SnakeBlockbreakerClock do
     after
       100 ->
         GenServer.cast(p, {:display_select_game_flag, times})
-        new_times = rem(times + 1, 64)
+        new_times = rem(times + 1, 320)
         display_select_game(p, new_times)
     end
   end
 
   defp display_game_text(spi, times, slot) do
-    frame = rem(div(times, 8), 8) * 8
+    frame = select_game_frame(times, slot)
     data1 = select_menu_matrix(times, slot)
     data2 = get_data(@empty_matrix, 1, frame, slot)
     write_digit(spi, @digit_0, data1, :device_1)
     write_digit(spi, @digit_0, data2, :device_2)
   end
+
+  defp select_game_frame(times, slot) do
+    rem(div(times, 8), select_game_steps(slot)) * 8
+  end
+
+  defp select_game_steps(:snake), do: div(map_size(@select_game_snake), 8)
+  defp select_game_steps(:breaker), do: div(map_size(@select_game_breaker), 8)
+  defp select_game_steps(:flappy), do: div(map_size(@select_game_flappy), 8)
 
   defp select_menu_matrix(times, slot) do
     active_row =
@@ -1102,7 +1110,9 @@ if new_left != prev_left do
               end
               end
 
-              IO.puts("Clock: #{pad(hour)}:#{pad(minute)}")
+              if new_left != prev_left or new_right != prev_right do
+                IO.puts("Clock: #{pad(hour)}:#{pad(minute)}")
+              end
               {new_left, new_right, 19}
             else
               {prev_left, prev_right, tick - 1}
@@ -1128,12 +1138,12 @@ if new_left != prev_left do
           new_date_mode =
             if is_nil(new_message_offset) and is_nil(new_message_step) do
               if shift_y == 0 and new_shift_y < 0 do
-                IO.puts("clock: joystick UP -> toggle display mode #{date_mode}")
-                rem(date_mode + 1, 3)
+                IO.puts("clock: joystick UP -> toggle solar date #{date_mode}")
+                if date_mode == 0, do: 1, else: 0
               else
                 if shift_y == 0 and new_shift_y > 0 do
-                  IO.puts("clock: joystick DOWN -> toggle display mode back #{date_mode}")
-                  rem(date_mode + 2, 3)
+                  IO.puts("clock: joystick DOWN -> toggle lunar date #{date_mode}")
+                  if date_mode == 0, do: 2, else: 0
                 else
                   date_mode
                 end
