@@ -863,6 +863,7 @@ defmodule BlockBreaker2Led do
 
       if game_over do
         IO.puts("block breaker: GAME OVER")
+        SnakeBlockbreakerClock.NVS.update_high_score(:breaker, state.score)
         {data1, data2} = handle_game_over(state.score)
         write_digit(state.spi, @digit_0, data1, :device_1)
         write_digit(state.spi, @digit_0, data2, :device_2)
@@ -870,6 +871,7 @@ defmodule BlockBreaker2Led do
       else
         if new_score == @max_point do
           IO.puts("block breaker: GAME WIN")
+          SnakeBlockbreakerClock.NVS.update_high_score(:breaker, new_score)
           {data1, data2} = handle_game_over(new_score)
           write_digit(state.spi, @digit_0, data1, :device_1)
           write_digit(state.spi, @digit_0, data2, :device_2)

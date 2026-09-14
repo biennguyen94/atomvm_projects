@@ -248,6 +248,7 @@ defmodule FlappyBird2Led do
 
       if collision or next_bird_y >= @floor_y do
         IO.puts("flappy: GAME OVER score=#{state.score} bird_y=#{next_bird_y} collision=#{collision}")
+        SnakeBlockbreakerClock.NVS.update_high_score(:flappy, state.score)
         render_game_over(state.spi, state.score)
         {:noreply, %{state | gameover: true}}
       else

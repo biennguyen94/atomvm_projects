@@ -297,7 +297,7 @@ defmodule SnakeBlockbreakerClock do
     ]
   ]
 
-  defstruct [:spi, :goverproc, :slot]
+  defstruct [:spi, :goverproc, :slot, :score]
 
   @digit_left %{
     0 => %{
@@ -693,7 +693,7 @@ defmodule SnakeBlockbreakerClock do
   def init(_) do
     {:ok, spi} = init_max7219(@spisettings)
     IO.puts("Init SPI and MAX7219 OK\n")
-    new_state = %__MODULE__{spi: spi, goverproc: nil, slot: :snake}
+    new_state = %__MODULE__{spi: spi, goverproc: nil, slot: :snake, score: 0}
     {:ok, new_state}
   end
 
@@ -710,7 +710,7 @@ defmodule SnakeBlockbreakerClock do
   end
 
   def handle_cast({:set_slot, slot}, state) do
-    {:noreply, %{state | slot: slot}}
+    {:noreply, %{state | slot: slot, score: high_score_for(slot)}}
   end
 
   def handle_cast(:game_over, state) do
@@ -721,7 +721,7 @@ defmodule SnakeBlockbreakerClock do
     GPIO.set_pin_pull(@gpio_sw, :up)
     new_proc = spawn(__MODULE__, :display_select_game, [self(), 0])
     spawn(__MODULE__, :select_game, [self(), @gpio_vrx])
-    new_state = %{state | goverproc: new_proc, slot: :snake}
+    new_state = %{state | goverproc: new_proc, slot: :snake, score: high_score_for(:snake)}
     {:noreply, new_state}
   end
 
@@ -742,11 +742,11 @@ defmodule SnakeBlockbreakerClock do
     IO.puts("parent: clock done, starting game selection")
     new_proc = spawn(__MODULE__, :display_select_game, [self(), 0])
     spawn(__MODULE__, :select_game, [self(), @gpio_vrx, :wait_for_neutral, :snake])
-    {:noreply, %{state | goverproc: new_proc, slot: :snake}}
+    {:noreply, %{state | goverproc: new_proc, slot: :snake, score: high_score_for(:snake)}}
   end
 
   def handle_cast({:display_select_game_flag, times}, state) do
-    display_game_text(state.spi, times, state.slot)
+    display_game_text(state.spi, times, state.slot, state.score)
     {:noreply, state}
   end
 
@@ -863,12 +863,31 @@ defmodule SnakeBlockbreakerClock do
     end
   end
 
-  defp display_game_text(spi, times, slot) do
+  defp display_game_text(spi, times, slot, score) do
     frame = select_game_frame(times, slot)
     data1 = select_menu_matrix(times, slot)
+    data1 = overlay_score(data1, stack_score(score))
     data2 = get_data(@empty_matrix, 1, frame, slot)
     write_digit(spi, @digit_0, data1, :device_1)
     write_digit(spi, @digit_0, data2, :device_2)
+  end
+
+  defp stack_score(score) do
+    capped = min(score, 99)
+    score_map = stack_digits_led_left(div(capped, 10), rem(capped, 10))
+    shift_up_one_row(score_map)
+  end
+
+  defp shift_up_one_row(score_map) do
+    for {row, value} <- score_map, into: %{} do
+      {row, value >>> 1}
+    end
+  end
+
+  defp overlay_score(menu, score_map) do
+    for row <- 1..8, into: %{} do
+      {row, Map.get(menu, row, 0) ||| Map.get(score_map, row, 0)}
+    end
   end
 
   defp select_game_frame(times, slot) do
@@ -878,6 +897,10 @@ defmodule SnakeBlockbreakerClock do
   defp select_game_steps(:snake), do: div(map_size(@select_game_snake), 8)
   defp select_game_steps(:breaker), do: div(map_size(@select_game_breaker), 8)
   defp select_game_steps(:flappy), do: div(map_size(@select_game_flappy), 8)
+
+  defp high_score_for(slot) do
+    SnakeBlockbreakerClock.NVS.high_score(slot)
+  end
 
   defp select_menu_matrix(times, slot) do
     active_row =
@@ -1058,6 +1081,7 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp start_animation(pid) do
+    GenServer.cast(pid, {:set_slot, :snake})
     new_proc = spawn(__MODULE__, :display_select_game, [pid, 0])
     GenServer.cast(pid, {:set_goverproc, new_proc})
   end

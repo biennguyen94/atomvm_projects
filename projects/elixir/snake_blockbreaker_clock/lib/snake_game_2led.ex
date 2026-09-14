@@ -969,6 +969,7 @@ defmodule SnakeGame2Led do
     status = is_game_over(new_snake_head, new_snake_body, new_snake_len - 1, 0)
     if status do
       IO.puts("snake: GAME OVER")
+      SnakeBlockbreakerClock.NVS.update_high_score(:snake, state.snakelen)
       if is_pid(state.blink_pid) do
         send(state.blink_pid, :stop)
       end
