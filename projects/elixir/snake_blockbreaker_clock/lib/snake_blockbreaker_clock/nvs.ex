@@ -44,7 +44,7 @@ defmodule SnakeBlockbreakerClock.NVS do
   @wifi_passphrase "password"
 
   @high_score_namespace :high_scores
-  @high_score_keys %{snake: :snake_hs, breaker: :breaker_hs, flappy: :flappy_hs}
+  @high_score_keys %{snake: :snake_hs, breaker: :breaker_hs, flappy: :flappy_hs, pong: :pong_hs}
 
   def get_binary(:wifi_ssid), do: @wifi_ssid
   def get_binary(:wifi_passphrase), do: @wifi_passphrase

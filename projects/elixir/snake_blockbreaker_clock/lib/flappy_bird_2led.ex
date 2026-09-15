@@ -287,7 +287,7 @@ defmodule FlappyBird2Led do
           elapsed = :erlang.system_time(:millisecond) - press_ms
           state = %{state | button_press_time: nil}
 
-          if elapsed > 2000 do
+          if elapsed > 1000 do
             IO.puts("flappy: long press -> exit to clock")
             if is_pid(state.goverproc), do: send(state.goverproc, :stop)
             if is_pid(state.joystick_pid), do: send(state.joystick_pid, :stop)

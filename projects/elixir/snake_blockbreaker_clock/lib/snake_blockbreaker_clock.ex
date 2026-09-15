@@ -652,10 +652,53 @@ defmodule SnakeBlockbreakerClock do
      58 => 0b00000000,
      59 => 0b00010000,
      60 => 0b00010000,
-     61 => 0b00000000,
-     62 => 0b00000000,
-     63 => 0b00000000,
-     64 => 0b10000111
+61 => 0b00000000,
+      62 => 0b00000000,
+      63 => 0b00000000,
+      64 => 0b10000111
+  }
+
+  @select_game_pong %{
+    1 => 0b00000001,
+    2 => 0b00000101,
+    3 => 0b00000001,
+    4 => 0b10000000,
+    5 => 0b10000000,
+    6 => 0b10000000,
+    7 => 0b00000000,
+    8 => 0b00000000,
+    9 => 0b00000001,
+    10 => 0b00000001,
+    11 => 0b00000001,
+    12 => 0b10010000,
+    13 => 0b10000000,
+    14 => 0b10000000,
+    15 => 0b00000000,
+    16 => 0b00000000,
+    17 => 0b00000001,
+    18 => 0b00000001,
+    19 => 0b00000001,
+    20 => 0b00000000,
+    21 => 0b10000000,
+    22 => 0b11000000,
+    23 => 0b10000000,
+    24 => 0b00000000,
+    25 => 0b00000000,
+    26 => 0b00000001,
+    27 => 0b00000001,
+    28 => 0b00000001,
+    29 => 0b10000000,
+    30 => 0b10000000,
+    31 => 0b10000000,
+    32 => 0b00010000,
+    33 => 0b00000000,
+    34 => 0b00000000,
+    35 => 0b00000001,
+    36 => 0b00000001,
+    37 => 0b00000001,
+    38 => 0b10000100,
+    39 => 0b10000000,
+    40 => 0b10000000
   }
 
   def start do
@@ -833,11 +876,13 @@ defmodule SnakeBlockbreakerClock do
 
   defp next_slot(:snake, :right), do: :breaker
   defp next_slot(:breaker, :right), do: :flappy
-  defp next_slot(:flappy, :right), do: :snake
-  defp next_slot(:snake, :left), do: :flappy
+  defp next_slot(:flappy, :right), do: :pong
+  defp next_slot(:pong, :right), do: :snake
+  defp next_slot(:snake, :left), do: :pong
   defp next_slot(:breaker, :left), do: :snake
   defp next_slot(:flappy, :left), do: :breaker
-  defp next_slot(_slot, :down), do: :flappy
+  defp next_slot(:pong, :left), do: :flappy
+  defp next_slot(_slot, :down), do: :pong
   defp next_slot(_slot, :up), do: :snake
 
   defp start_game(pid, _adcx, slot) do
@@ -850,6 +895,7 @@ defmodule SnakeBlockbreakerClock do
 
   defp start_selected_game(spi, :breaker), do: BlockBreaker2Led.start(spi)
   defp start_selected_game(spi, :flappy), do: FlappyBird2Led.start(spi)
+  defp start_selected_game(spi, :pong), do: PongGame2Led.start(spi)
   defp start_selected_game(spi, _slot), do: SnakeGame2Led.start(spi)
 
   def display_select_game(p, times) do
@@ -897,6 +943,7 @@ defmodule SnakeBlockbreakerClock do
   defp select_game_steps(:snake), do: div(map_size(@select_game_snake), 8)
   defp select_game_steps(:breaker), do: div(map_size(@select_game_breaker), 8)
   defp select_game_steps(:flappy), do: div(map_size(@select_game_flappy), 8)
+  defp select_game_steps(:pong), do: div(map_size(@select_game_pong), 8)
 
   defp high_score_for(slot) do
     SnakeBlockbreakerClock.NVS.high_score(slot)
@@ -905,15 +952,17 @@ defmodule SnakeBlockbreakerClock do
   defp select_menu_matrix(times, slot) do
     active_row =
       case slot do
-        :breaker -> 4
-        :flappy -> 7
-        _ -> 1
+        :snake -> 1
+        :breaker -> 3
+        :flappy -> 5
+        :pong -> 7
       end
 
     menu =
       @empty_matrix
       |> Map.put(1, 0b10000000)
-      |> Map.put(4, 0b10000000)
+      |> Map.put(3, 0b10000000)
+      |> Map.put(5, 0b10000000)
       |> Map.put(7, 0b10000000)
 
     if rem(times, 4) < 2 do
@@ -972,6 +1021,12 @@ defmodule SnakeBlockbreakerClock do
     row = Map.get(@select_game_flappy, number + times)
     new_result = Map.put(result, number, row)
     get_data(new_result, number + 1, times, :flappy)
+  end
+
+  defp get_data(result, number, times, :pong) do
+    row = Map.get(@select_game_pong, number + times)
+    new_result = Map.put(result, number, row)
+    get_data(new_result, number + 1, times, :pong)
   end
 
   defp write_digit(spi, 8, data, device) do
