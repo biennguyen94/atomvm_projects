@@ -71,30 +71,10 @@ defmodule SnakeBlockbreakerClock do
   - Info `{pid, :do_select_game}` – stop animation, send SPI handle back to caller
   """
   use GenServer
-  use Bitwise
-
-  @no_op 0x0
-  @digit_0 0x1
-  @digit_1 0x2
-  @digit_2 0x3
-  @digit_3 0x4
-  @digit_4 0x5
-  @digit_5 0x6
-  @digit_6 0x7
-  @digit_7 0x8
-  @decode_mode 0x9
-  @intensity 0xA
-  @scan_limit 0xB
-  @shutdown 0xC
-  @display_test 0xF
+  use SnakeBlockbreakerClock.LedDisplay
 
   @gpio_vrx 34
   @gpio_vry 35
-
-  @gpio_miso 19
-  @gpio_mosi 27
-  @gpio_sclk 5
-  @gpio_cs 18
 
   @gpio_sw 32
 
@@ -103,21 +83,7 @@ defmodule SnakeBlockbreakerClock do
 
   @delay_read_adc 100
 
-  @num_of_bits 8
-
-  @sntp_host "pool.ntp.org"
   @timezone_offset_ms 7 * 3600 * 1000
-
-  @empty_matrix %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
 
   @clock_message %{
     1 => 0b00000000,
@@ -978,13 +944,6 @@ defmodule SnakeBlockbreakerClock do
     {@gpio_vrx, @gpio_vry}
   end
 
-  defp read_adc(adc) do
-    case :esp_adc.read(adc) do
-      {:ok, {raw, _milli_volts}} -> {:ok, raw}
-      error -> :io.format("Error taking reading: ~p~n", [error])
-    end
-  end
-
   defp init_max7219(spi_settings) do
     spi = :spi.open(spi_settings)
     write_register(spi, @decode_mode, 0x0, :device_1)
@@ -1027,22 +986,6 @@ defmodule SnakeBlockbreakerClock do
     row = Map.get(@select_game_pong, number + times)
     new_result = Map.put(result, number, row)
     get_data(new_result, number + 1, times, :pong)
-  end
-
-  defp write_digit(spi, 8, data, device) do
-    reg_data = Map.get(data, 8)
-    write_register(spi, 8, reg_data, device)
-    :ok
-  end
-
-  defp write_digit(spi, number, data, device) do
-    reg_data = Map.get(data, number)
-    write_register(spi, number, reg_data, device)
-    write_digit(spi, number + 1, data, device)
-  end
-
-  defp write_register(spi, address, data, device) do
-    :spi.write_at(spi, device, address, @num_of_bits, data)
   end
 
   # ==================== clock ====================

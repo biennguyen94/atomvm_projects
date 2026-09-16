@@ -71,10 +71,10 @@ defmodule SnakeGame2Led do
   values are 8-bit bytes, each bit corresponding to a column). Both LEDs are stored as a tuple
   `{data1, data2}`.
 
-  The game uses 3 sets of digit bitmaps:
-  - `@number_N` – 7-segment style 8x8 digits (used for score display)
-  - `@number_N_left` – left-side version (LED 0)
-  - `@number_N_right` – right-side version (LED 1)
+  The game uses digit bitmaps provided by `SnakeBlockbreakerClock.LedDisplay` (used for score display):
+  - Center digits via `number/1`
+  - Left-side version for LED 0 via `number_left/1`
+  - Right-side version for LED 1 via `number_right/1`
 
   ## Flow
   1. `start/1` – initialize GenServer, spawn joystick process, enter main loop
@@ -95,31 +95,11 @@ defmodule SnakeGame2Led do
    - Message `{:newspeed, speed}` – speed update from DistErl speed control (remote)
   """
   use GenServer
-  use Bitwise
-
-  @no_op 0x0
-  @digit_0 0x1
-  @digit_1 0x2
-  @digit_2 0x3
-  @digit_3 0x4
-  @digit_4 0x5
-  @digit_5 0x6
-  @digit_6 0x7
-  @digit_7 0x8
-  @decode_mode 0x9
-  @intensity 0xA
-  @scan_limit 0xB
-  @shutdown 0xC
-  @display_test 0xF
+  use SnakeBlockbreakerClock.LedDisplay
 
   @gpio_vrx 34
   @gpio_vry 35
   @gpio_sw 32
-
-  @gpio_miso 19
-  @gpio_mosi 27
-  @gpio_sclk 5
-  @gpio_cs 18
 
   @low_range 800
   @high_range 3000
@@ -127,9 +107,6 @@ defmodule SnakeGame2Led do
   @delay_read_adc 20
   @max_speed 200
   @blink_rate 200
-
-  @num_of_bits 8
-  @device_name :device_1
 
   @led0 0
   @led1 1
@@ -154,347 +131,6 @@ defmodule SnakeGame2Led do
     :blink_pid,
     :button_press_time
   ]
-
-  @empty_matrix %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_0_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01100000,
-    @digit_3 => 0b10010000,
-    @digit_4 => 0b10010000,
-    @digit_5 => 0b10010000,
-    @digit_6 => 0b01100000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_1_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01000000,
-    @digit_3 => 0b11000000,
-    @digit_4 => 0b01000000,
-    @digit_5 => 0b01000000,
-    @digit_6 => 0b11100000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_2_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01100000,
-    @digit_3 => 0b10010000,
-    @digit_4 => 0b00100000,
-    @digit_5 => 0b01000000,
-    @digit_6 => 0b11110000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_3_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01100000,
-    @digit_3 => 0b10010000,
-    @digit_4 => 0b00100000,
-    @digit_5 => 0b10010000,
-    @digit_6 => 0b01100000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_4_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00010000,
-    @digit_3 => 0b00110000,
-    @digit_4 => 0b01010000,
-    @digit_5 => 0b11110000,
-    @digit_6 => 0b00010000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_5_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b11110000,
-    @digit_3 => 0b10000000,
-    @digit_4 => 0b11110000,
-    @digit_5 => 0b00010000,
-    @digit_6 => 0b11110000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_6_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b11110000,
-    @digit_3 => 0b10000000,
-    @digit_4 => 0b11110000,
-    @digit_5 => 0b10010000,
-    @digit_6 => 0b11110000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_7_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b11110000,
-    @digit_3 => 0b00010000,
-    @digit_4 => 0b00100000,
-    @digit_5 => 0b01000000,
-    @digit_6 => 0b10000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_8_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b11110000,
-    @digit_3 => 0b10010000,
-    @digit_4 => 0b11110000,
-    @digit_5 => 0b10010000,
-    @digit_6 => 0b11110000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_9_left %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b11110000,
-    @digit_3 => 0b10010000,
-    @digit_4 => 0b11110000,
-    @digit_5 => 0b00010000,
-    @digit_6 => 0b11110000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_0_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000110,
-    @digit_3 => 0b00001001,
-    @digit_4 => 0b00001001,
-    @digit_5 => 0b00001001,
-    @digit_6 => 0b00000110,
-    @digit_7 => 0b00000000
-  }
-
-  @number_1_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000010,
-    @digit_3 => 0b00000110,
-    @digit_4 => 0b00000010,
-    @digit_5 => 0b00000010,
-    @digit_6 => 0b00000111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_2_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000110,
-    @digit_3 => 0b00001001,
-    @digit_4 => 0b00000010,
-    @digit_5 => 0b00000100,
-    @digit_6 => 0b00001111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_3_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000110,
-    @digit_3 => 0b00001001,
-    @digit_4 => 0b00000010,
-    @digit_5 => 0b00001001,
-    @digit_6 => 0b00000110,
-    @digit_7 => 0b00000000
-  }
-
-  @number_4_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000001,
-    @digit_3 => 0b00000011,
-    @digit_4 => 0b00000101,
-    @digit_5 => 0b00001111,
-    @digit_6 => 0b00000001,
-    @digit_7 => 0b00000000
-  }
-
-  @number_5_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00001111,
-    @digit_3 => 0b00001000,
-    @digit_4 => 0b00001111,
-    @digit_5 => 0b00000001,
-    @digit_6 => 0b00001111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_6_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00001111,
-    @digit_3 => 0b00001000,
-    @digit_4 => 0b00001111,
-    @digit_5 => 0b00001001,
-    @digit_6 => 0b00001111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_7_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00001111,
-    @digit_3 => 0b00000001,
-    @digit_4 => 0b00000010,
-    @digit_5 => 0b00000100,
-    @digit_6 => 0b00001000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_8_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00001111,
-    @digit_3 => 0b00001001,
-    @digit_4 => 0b00001111,
-    @digit_5 => 0b00001001,
-    @digit_6 => 0b00001111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_9_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00001111,
-    @digit_3 => 0b00001001,
-    @digit_4 => 0b00001111,
-    @digit_5 => 0b00000001,
-    @digit_6 => 0b00001111,
-    @digit_7 => 0b00000000
-  }
-
-  @number_0 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00111100,
-    @digit_3 => 0b01000010,
-    @digit_4 => 0b01000010,
-    @digit_5 => 0b00111100,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_1 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01000000,
-    @digit_3 => 0b01000010,
-    @digit_4 => 0b01111110,
-    @digit_5 => 0b01000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_2 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01000100,
-    @digit_3 => 0b01100010,
-    @digit_4 => 0b01010010,
-    @digit_5 => 0b01001100,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_3 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00100100,
-    @digit_3 => 0b01000010,
-    @digit_4 => 0b01011010,
-    @digit_5 => 0b00100100,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_4 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00011000,
-    @digit_3 => 0b00010100,
-    @digit_4 => 0b01111110,
-    @digit_5 => 0b00010000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_5 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01001110,
-    @digit_3 => 0b01001010,
-    @digit_4 => 0b01001010,
-    @digit_5 => 0b01111010,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_6 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01111110,
-    @digit_3 => 0b01001010,
-    @digit_4 => 0b01001010,
-    @digit_5 => 0b01111010,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_7 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01000010,
-    @digit_3 => 0b00100010,
-    @digit_4 => 0b00010010,
-    @digit_5 => 0b00001110,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_8 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00110100,
-    @digit_3 => 0b01001010,
-    @digit_4 => 0b01001010,
-    @digit_5 => 0b00110100,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_9 %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b01001110,
-    @digit_3 => 0b01001010,
-    @digit_4 => 0b01001010,
-    @digit_5 => 0b01111110,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
 
   @game_over %{
     1 => 0b00000000,
@@ -864,56 +500,6 @@ defmodule SnakeGame2Led do
     :ok
   end
 
-  defp write_digit(spi, 8, data, device) do
-    reg_data = Map.get(data, 8)
-    write_register(spi, 8, reg_data, device)
-    :ok
-  end
-
-  defp write_digit(spi, number, data, device) do
-    reg_data = Map.get(data, number)
-    write_register(spi, number, reg_data, device)
-    write_digit(spi, number + 1, data, device)
-  end
-
-  defp write_register(spi, address, data, device) do
-    :spi.write(
-      spi,
-      device,
-      %{
-        write_data: <<address, data>>
-      }
-    )
-  end
-
-  defp get_device(num) do
-    case num do
-      0 -> :device_1
-      1 -> :device_2
-    end
-  end
-
-  defp get_data(device, {data1, data2}) do
-    case device do
-      :device_1 -> data1
-      :device_2 -> data2
-    end
-  end
-
-  defp get_return_data({data1, data2}, new_data, device) do
-    case device do
-      :device_1 -> {new_data, data2}
-      :device_2 -> {data1, new_data}
-    end
-  end
-
-  defp read_adc(adc) do
-    case :esp_adc.read(adc) do
-      {:ok, {raw, _milli_volts}} -> {:ok, raw}
-      error -> :io.format("Error taking reading: ~p~n", [error])
-    end
-  end
-
   def joystick(pid, adcx, adcy) do
     receive do
       :stop -> :ok
@@ -1047,33 +633,6 @@ defmodule SnakeGame2Led do
     shift_snake(snake_body, snake_head, snake_len, new_snake_body, number + 1)
   end
 
-  defp update_data(_map, data, {id, {x, y}}, len, len) do
-    temp = get_data(get_device(id), data)
-    new_data = write_element({x, y}, temp)
-    get_return_data(data, new_data, get_device(id))
-  end
-
-  defp update_data(map, data, food, number, len) do
-    {id, element} = Map.get(map, number)
-    device = get_device(id)
-    previous_data = get_data(device, data)
-    new_data =
-      if element != {-1, -1} do
-        write_element(element, previous_data)
-      else
-        previous_data
-      end
-    return_data = get_return_data(data, new_data, device)
-    update_data(map, return_data, food, number + 1, len)
-  end
-
-  defp write_element({x, y}, data) do
-    new_x = 128 >>> y
-    current_row = Map.get(data, x + 1)
-    new_row = new_x ||| current_row
-    Map.put(data, x + 1, new_row)
-  end
-
   defp is_game_over(_snake_head, _snake_body, snake_len, snake_len) do
     false
   end
@@ -1084,27 +643,6 @@ defmodule SnakeGame2Led do
       true
     else
       is_game_over(snake_head, snake_body, snake_len, number + 1)
-    end
-  end
-
-  defp handle_game_over(score) do
-    first_num = get_num_macro(div(score, 10))
-    second_num = get_num_macro(rem(score, 10))
-    {first_num, second_num}
-  end
-
-  defp get_num_macro(number) do
-    case number do
-      0 -> @number_0
-      1 -> @number_1
-      2 -> @number_2
-      3 -> @number_3
-      4 -> @number_4
-      5 -> @number_5
-      6 -> @number_6
-      7 -> @number_7
-      8 -> @number_8
-      9 -> @number_9
     end
   end
 

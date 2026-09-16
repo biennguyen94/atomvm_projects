@@ -68,31 +68,10 @@ defmodule PongGame2Led do
   - Message `{:newspeed, speed}` - internal level-based tick update
   """
   use GenServer
-  use Bitwise
+  use SnakeBlockbreakerClock.LedDisplay
 
-  @no_op 0x0
-  @digit_0 0x1
-  @digit_1 0x2
-  @digit_2 0x3
-  @digit_3 0x4
-  @digit_4 0x5
-  @digit_5 0x6
-  @digit_6 0x7
-  @digit_7 0x8
-  @decode_mode 0x9
-  @intensity 0xA
-  @scan_limit 0xB
-  @shutdown 0xC
-  @display_test 0xF
-
-  @gpio_vrx 34
   @gpio_vry 35
   @gpio_sw 32
-
-  @gpio_miso 19
-  @gpio_mosi 27
-  @gpio_sclk 5
-  @gpio_cs 18
 
   # ================ Tunable parameters ================
   # Joystick ADC thresholds (VRy axis): raw ADC below @adc_up => joystick up,
@@ -108,8 +87,6 @@ defmodule PongGame2Led do
   # Tuning: bigger = slower paddle; smaller (e.g. 2) = faster paddle.
   @paddle_move_div 4
 
-  # Paddle height in cells (rows). Tuning: bigger = easier to hit.
-  @paddle_height 3
   # Highest allowed player paddle row (bottom edge of the 8-row matrix).
   # Tuning: smaller = paddle can't reach the bottom; (max rows = 8 - height) is a safe cap.
   @paddle_max_y 5
@@ -121,16 +98,10 @@ defmodule PongGame2Led do
 
   # Points needed by a side to win the match. Tuning: bigger = longer match.
   @max_score 3
-  # Ticks (at loop speed) the final score is shown on screen.
-  # Tuning: bigger = score stays up longer before waiting for button press.
-  @score_display_ticks 6
 
   # AI reaction time: ticks the AI waits before re-predicting the ball target.
   # Tuning: bigger = dumber/slower AI; smaller = faster/better AI.
   @ai_reaction_delay 2
-  # Random row offset added to the AI's predicted target (+/-1) to make it miss sometimes.
-  # Tuning: bigger = AI misses more (easier game); 0 = perfect AI.
-  @ai_prediction_error 1
 
   # Loop tick (ms) at the start of a match and at each new level.
   # Tuning: smaller = faster ball; bigger = slower ball.
@@ -163,228 +134,6 @@ defmodule PongGame2Led do
   # If too weak, lower @boost_tick or raise @boost_ticks for a longer effect.
   @boost_tick 75
 
-  @num_of_bits 8
-
-  @number_0_left %{
-    @digit_0 => 0b00111100,
-    @digit_1 => 0b01000010,
-    @digit_2 => 0b01000010,
-    @digit_3 => 0b00111100,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_1_left %{
-    @digit_0 => 0b01000100,
-    @digit_1 => 0b01111110,
-    @digit_2 => 0b01000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_2_left %{
-    @digit_0 => 0b01000100,
-    @digit_1 => 0b01100010,
-    @digit_2 => 0b01010010,
-    @digit_3 => 0b01001100,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_3_left %{
-    @digit_0 => 0b01000010,
-    @digit_1 => 0b01001010,
-    @digit_2 => 0b01111110,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_4_left %{
-    @digit_0 => 0b00010000,
-    @digit_1 => 0b00011000,
-    @digit_2 => 0b00010100,
-    @digit_3 => 0b01111110,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_5_left %{
-    @digit_0 => 0b01001110,
-    @digit_1 => 0b01001010,
-    @digit_2 => 0b01001010,
-    @digit_3 => 0b01111010,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_6_left %{
-    @digit_0 => 0b01111110,
-    @digit_1 => 0b01001010,
-    @digit_2 => 0b01001010,
-    @digit_3 => 0b01111010,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_7_left %{
-    @digit_0 => 0b01000010,
-    @digit_1 => 0b00100010,
-    @digit_2 => 0b00010010,
-    @digit_3 => 0b00001110,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_8_left %{
-    @digit_0 => 0b01111110,
-    @digit_1 => 0b01001010,
-    @digit_2 => 0b01001010,
-    @digit_3 => 0b01111110,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_9_left %{
-    @digit_0 => 0b01001110,
-    @digit_1 => 0b01001010,
-    @digit_2 => 0b01001010,
-    @digit_3 => 0b01111110,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
-
-  @number_0_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00111100,
-    @digit_5 => 0b01000010,
-    @digit_6 => 0b01000010,
-    @digit_7 => 0b00111100
-  }
-
-  @number_1_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b01000100,
-    @digit_6 => 0b01111110,
-    @digit_7 => 0b01000000
-  }
-
-  @number_2_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01000100,
-    @digit_5 => 0b01100010,
-    @digit_6 => 0b01010010,
-    @digit_7 => 0b01001100
-  }
-
-  @number_3_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b01000010,
-    @digit_6 => 0b01001010,
-    @digit_7 => 0b01111110
-  }
-
-  @number_4_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00010000,
-    @digit_5 => 0b00011000,
-    @digit_6 => 0b00010100,
-    @digit_7 => 0b01111110
-  }
-
-  @number_5_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01001110,
-    @digit_5 => 0b01001010,
-    @digit_6 => 0b01001010,
-    @digit_7 => 0b01111010
-  }
-
-  @number_6_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01111110,
-    @digit_5 => 0b01001010,
-    @digit_6 => 0b01001010,
-    @digit_7 => 0b01111010
-  }
-
-  @number_7_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01000010,
-    @digit_5 => 0b00100010,
-    @digit_6 => 0b00010010,
-    @digit_7 => 0b00001110
-  }
-
-  @number_8_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01111110,
-    @digit_5 => 0b01001010,
-    @digit_6 => 0b01001010,
-    @digit_7 => 0b01111110
-  }
-
-  @number_9_right %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b01001110,
-    @digit_5 => 0b01001010,
-    @digit_6 => 0b01001010,
-    @digit_7 => 0b01111010
-  }
-
   defstruct [
     :spi,
     :ball_x,
@@ -411,17 +160,6 @@ defmodule PongGame2Led do
     :delay_left,
     :boost_ticks_left
   ]
-
-  @empty_matrix %{
-    @digit_0 => 0b00000000,
-    @digit_1 => 0b00000000,
-    @digit_2 => 0b00000000,
-    @digit_3 => 0b00000000,
-    @digit_4 => 0b00000000,
-    @digit_5 => 0b00000000,
-    @digit_6 => 0b00000000,
-    @digit_7 => 0b00000000
-  }
 
   def start(spi) do
     :erlang.system_flag(:schedulers_online, 2)
@@ -846,8 +584,8 @@ defmodule PongGame2Led do
   end
 
   defp show_score_display(spi, player_score, ai_score) do
-    data1 = get_num_left(player_score)
-    data2 = get_num_right(ai_score)
+    data1 = number_left(player_score)
+    data2 = number_right(ai_score)
     write_digit(spi, @digit_0, data1, :device_1)
     write_digit(spi, @digit_0, data2, :device_2)
   end
@@ -917,36 +655,6 @@ defmodule PongGame2Led do
     end
   end
 
-  defp get_num_left(n) do
-    case n do
-      0 -> @number_0_left
-      1 -> @number_1_left
-      2 -> @number_2_left
-      3 -> @number_3_left
-      4 -> @number_4_left
-      5 -> @number_5_left
-      6 -> @number_6_left
-      7 -> @number_7_left
-      8 -> @number_8_left
-      9 -> @number_9_left
-    end
-  end
-
-  defp get_num_right(n) do
-    case n do
-      0 -> @number_0_right
-      1 -> @number_1_right
-      2 -> @number_2_right
-      3 -> @number_3_right
-      4 -> @number_4_right
-      5 -> @number_5_right
-      6 -> @number_6_right
-      7 -> @number_7_right
-      8 -> @number_8_right
-      9 -> @number_9_right
-    end
-  end
-
   def game_over_process(p) do
     receive do
       :stop -> :ok
@@ -954,18 +662,6 @@ defmodule PongGame2Led do
       100 ->
         game_over_process(p)
     end
-  end
-
-  defp write_digit(spi, 8, data, device) do
-    reg_data = Map.get(data, 8)
-    write_register(spi, 8, reg_data, device)
-    :ok
-  end
-
-  defp write_digit(spi, number, data, device) do
-    reg_data = Map.get(data, number)
-    write_register(spi, number, reg_data, device)
-    write_digit(spi, number + 1, data, device)
   end
 
   defp write_digit_diff(spi, 8, data, device, last_data) do
@@ -984,17 +680,6 @@ defmodule PongGame2Led do
     end
 
     write_digit_diff(spi, number + 1, data, device, last_data)
-  end
-
-  defp write_register(spi, address, data, device) do
-    :spi.write_at(spi, device, address, @num_of_bits, data)
-  end
-
-  defp read_adc(adc) do
-    case :esp_adc.read(adc) do
-      {:ok, {raw, _milli_volts}} -> {:ok, raw}
-      error -> :io.format("Error taking reading: ~p~n", [error])
-    end
   end
 
   defp new_game(spi) do

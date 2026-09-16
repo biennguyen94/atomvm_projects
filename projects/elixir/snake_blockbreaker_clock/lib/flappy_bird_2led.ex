@@ -30,18 +30,11 @@ defmodule FlappyBird2Led do
   """
 
   use GenServer
-  use Bitwise
+  use SnakeBlockbreakerClock.LedDisplay
 
-  @gpio_vrx 34
   @gpio_vry 35
   @gpio_sw 32
 
-  @gpio_miso 19
-  @gpio_mosi 27
-  @gpio_sclk 5
-  @gpio_cs 18
-
-  @low_range 800
   @high_range 3000
   @delay_read_adc 20
 
@@ -64,116 +57,6 @@ defmodule FlappyBird2Led do
   @pipe_spacing 6
   @pipe_remove_x -1
   @initial_pipe_x 12
-
-  @number_0 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b00111100,
-    3 => 0b01000010,
-    4 => 0b01000010,
-    5 => 0b00111100,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_1 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01000000,
-    3 => 0b01000010,
-    4 => 0b01111110,
-    5 => 0b01000000,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_2 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01000100,
-    3 => 0b01100010,
-    4 => 0b01010010,
-    5 => 0b01001100,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_3 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b00100100,
-    3 => 0b01000010,
-    4 => 0b01011010,
-    5 => 0b00100100,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_4 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b00011000,
-    3 => 0b00010100,
-    4 => 0b01111110,
-    5 => 0b00010000,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_5 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01001110,
-    3 => 0b01001010,
-    4 => 0b01001010,
-    5 => 0b01111010,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_6 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01111110,
-    3 => 0b01001010,
-    4 => 0b01001010,
-    5 => 0b01111010,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_7 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01000010,
-    3 => 0b00100010,
-    4 => 0b00010010,
-    5 => 0b00001110,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_8 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b00110100,
-    3 => 0b01001010,
-    4 => 0b01001010,
-    5 => 0b00110100,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
-
-  @number_9 %{
-    0 => 0b00000000,
-    1 => 0b00000000,
-    2 => 0b01001110,
-    3 => 0b01001010,
-    4 => 0b01001010,
-    5 => 0b01111110,
-    6 => 0b00000000,
-    7 => 0b00000000
-  }
 
   defstruct [
     :spi,
@@ -369,39 +252,21 @@ defmodule FlappyBird2Led do
 
   defp render_board(state) do
     {data1, data2} = build_display(state)
-    write_matrix(state.spi, data1, data2)
+    write_digit(state.spi, @digit_0, data1, :device_1)
+    write_digit(state.spi, @digit_0, data2, :device_2)
     state
   end
 
   defp render_game_over(spi, score) do
     {data1, data2} = handle_game_over(score)
-    write_digit(spi, data1, :device_1)
-    write_digit(spi, data2, :device_2)
+    write_digit(spi, @digit_0, data1, :device_1)
+    write_digit(spi, @digit_0, data2, :device_2)
     :ok
   end
 
-  defp handle_game_over(score) do
-    {get_num_macro(div(score, 10)), get_num_macro(rem(score, 10))}
-  end
-
-  defp get_num_macro(number) do
-    case number do
-      0 -> @number_0
-      1 -> @number_1
-      2 -> @number_2
-      3 -> @number_3
-      4 -> @number_4
-      5 -> @number_5
-      6 -> @number_6
-      7 -> @number_7
-      8 -> @number_8
-      9 -> @number_9
-    end
-  end
-
   defp build_display(state) do
-    left = empty_matrix()
-    right = empty_matrix()
+    left = @empty_matrix
+    right = @empty_matrix
 
     board = empty_board()
     board = draw_bird(board, @bird_x, state.bird_y)
@@ -488,9 +353,9 @@ defmodule FlappyBird2Led do
     column_bits = board_column_bits(board, col, 7, 0)
 
     if col < 8 do
-      build_matrix_rows(board, col + 1, {Map.put(left, col, column_bits), right})
+      build_matrix_rows(board, col + 1, {Map.put(left, col + 1, column_bits), right})
     else
-      build_matrix_rows(board, col + 1, {left, Map.put(right, col - 8, column_bits)})
+      build_matrix_rows(board, col + 1, {left, Map.put(right, col - 7, column_bits)})
     end
   end
 
@@ -501,19 +366,6 @@ defmodule FlappyBird2Led do
       1 -> board_column_bits(board, col, row - 1, acc ||| 1 <<< row)
       _ -> board_column_bits(board, col, row - 1, acc)
     end
-  end
-
-  defp empty_matrix do
-    %{
-      0 => 0,
-      1 => 0,
-      2 => 0,
-      3 => 0,
-      4 => 0,
-      5 => 0,
-      6 => 0,
-      7 => 0
-    }
   end
 
   defp empty_board do
@@ -584,25 +436,6 @@ defmodule FlappyBird2Led do
     end
   end
 
-  defp write_matrix(spi, data1, data2) do
-    write_digit(spi, data1, :device_1)
-    write_digit(spi, data2, :device_2)
-  end
-
-  defp write_digit(spi, data, device) do
-    write_digit_loop(spi, 0, data, device)
-  end
-
-  defp write_digit_loop(_spi, digit, _data, _device) when digit >= 8 do
-    :ok
-  end
-
-  defp write_digit_loop(spi, digit, data, device) do
-    reg = Map.get(data, digit, 0)
-    :spi.write(spi, device, %{write_data: <<digit + 1, reg>>})
-    write_digit_loop(spi, digit + 1, data, device)
-  end
-
   defp move_pipes(pipes) do
     move_pipes_loop([], pipes)
   end
@@ -666,11 +499,4 @@ defmodule FlappyBird2Led do
   defp get_pixel_in_row([], _col, _idx), do: 0
   defp get_pixel_in_row([value | _rest], col, idx) when idx == col, do: value
   defp get_pixel_in_row([_value | rest], col, idx), do: get_pixel_in_row(rest, col, idx + 1)
-
-  defp read_adc(adc) do
-    case :esp_adc.read(adc) do
-      {:ok, {raw, _milli_volts}} -> {:ok, raw}
-      _ -> {:error, :read_failed}
-    end
-  end
 end
