@@ -824,8 +824,8 @@ defmodule SnakeBlockbreakerClock do
   end
 
   defp read_tilt(adcx) do
-    {:ok, x} = read_adc(adcx)
-    {:ok, y} = read_adc(@gpio_vry)
+    x = read_adc_value(adcx)
+    y = read_adc_value(@gpio_vry)
 
     cond do
       x < @low_range -> :left
@@ -833,6 +833,13 @@ defmodule SnakeBlockbreakerClock do
       y < @low_range -> :down
       y > @high_range -> :up
       true -> :none
+    end
+  end
+
+  defp read_adc_value(adc) do
+    case read_adc(adc) do
+      {:ok, value} -> value
+      :error -> 2048
     end
   end
 
@@ -1298,17 +1305,8 @@ if new_left != prev_left do
   end
 
   defp read_joystick_shifts(shift_x, shift_y) do
-    {:ok, x} =
-      case :esp_adc.read(@gpio_vrx) do
-        {:ok, {raw, _}} -> {:ok, raw}
-        other -> other
-      end
-
-    {:ok, y} =
-      case :esp_adc.read(@gpio_vry) do
-        {:ok, {raw, _}} -> {:ok, raw}
-        other -> other
-      end
+    x = read_adc_value(@gpio_vrx)
+    y = read_adc_value(@gpio_vry)
 
     x_dev = abs(x - 2048)
     y_dev = abs(y - 2048)

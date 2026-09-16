@@ -179,7 +179,9 @@ defmodule SnakeBlockbreakerClock.LedDisplay do
   def read_adc(adc) do
     case :esp_adc.read(adc) do
       {:ok, {raw, _milli_volts}} -> {:ok, raw}
-      error -> :io.format("Error taking reading: ~p~n", [error])
+      error ->
+        :io.format("Error taking reading: ~p~n", [error])
+        :error
     end
   end
 

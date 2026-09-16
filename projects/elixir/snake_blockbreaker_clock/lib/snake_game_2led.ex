@@ -509,8 +509,8 @@ defmodule SnakeGame2Led do
       :stop -> :ok
     after
       @delay_read_adc ->
-        {:ok, x} = read_adc(adcx)
-        {:ok, y} = read_adc(adcy)
+        x = read_adc_value(adcx)
+        y = read_adc_value(adcy)
 
         new_dir =
           cond do
@@ -526,6 +526,13 @@ defmodule SnakeGame2Led do
         end
 
         joystick_loop(pid, adcx, adcy, new_dir)
+    end
+  end
+
+  defp read_adc_value(adc) do
+    case read_adc(adc) do
+      {:ok, value} -> value
+      :error -> -1
     end
   end
 

@@ -830,7 +830,7 @@ defmodule BlockBreaker2Led do
       :stop -> :ok
     after
       @delay_read_adc ->
-        {:ok, x} = read_adc(adcx)
+        x = read_adc_value(adcx)
 
         dir =
           cond do
@@ -850,6 +850,13 @@ defmodule BlockBreaker2Led do
           true ->
             joystick_loop(pid, adcx, 0)
         end
+    end
+  end
+
+  defp read_adc_value(adc) do
+    case read_adc(adc) do
+      {:ok, value} -> value
+      :error -> -1
     end
   end
 
@@ -934,7 +941,12 @@ defmodule BlockBreaker2Led do
   end
 
   def variable_resistor(parent, adc, previous_speed) do
-    {:ok, speed} = read_adc(adc)
+    speed =
+      case read_adc(adc) do
+        {:ok, value} -> value
+        :error -> previous_speed
+      end
+
     map_speed = map_value(speed, 0, @bit_resolution, @max_speed, @min_speed)
     is_change = is_not_in_range(previous_speed, map_speed)
     if is_change do
