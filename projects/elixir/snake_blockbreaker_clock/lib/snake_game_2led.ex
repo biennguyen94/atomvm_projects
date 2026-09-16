@@ -501,20 +501,31 @@ defmodule SnakeGame2Led do
   end
 
   def joystick(pid, adcx, adcy) do
+    joystick_loop(pid, adcx, adcy, nil)
+  end
+
+  defp joystick_loop(pid, adcx, adcy, last_dir) do
     receive do
       :stop -> :ok
     after
       @delay_read_adc ->
         {:ok, x} = read_adc(adcx)
         {:ok, y} = read_adc(adcy)
-        cond do
-          x < @low_range -> GenServer.cast(pid, {:change_direction, -1, 0})
-          y < @low_range -> GenServer.cast(pid, {:change_direction, 0, -1})
-          x > @high_range -> GenServer.cast(pid, {:change_direction, 1, 0})
-          y > @high_range -> GenServer.cast(pid, {:change_direction, 0, 1})
-          true -> :nothing_change
+
+        new_dir =
+          cond do
+            x < @low_range -> {-1, 0}
+            y < @low_range -> {0, -1}
+            x > @high_range -> {1, 0}
+            y > @high_range -> {0, 1}
+            true -> nil
+          end
+
+        if new_dir != nil and new_dir != last_dir do
+          GenServer.cast(pid, {:change_direction, elem(new_dir, 0), elem(new_dir, 1)})
         end
-        joystick(pid, adcx, adcy)
+
+        joystick_loop(pid, adcx, adcy, new_dir)
     end
   end
 

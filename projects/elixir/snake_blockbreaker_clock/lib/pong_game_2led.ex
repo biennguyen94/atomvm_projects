@@ -85,7 +85,7 @@ defmodule PongGame2Led do
   @delay_read_adc 20
   # Paddle moves 1 cell every N poll reads (throttles paddle speed).
   # Tuning: bigger = slower paddle; smaller (e.g. 2) = faster paddle.
-  @paddle_move_div 4
+  @paddle_move_div 2
 
   # Highest allowed player paddle row (bottom edge of the 8-row matrix).
   # Tuning: smaller = paddle can't reach the bottom; (max rows = 8 - height) is a safe cap.
@@ -662,24 +662,6 @@ defmodule PongGame2Led do
       100 ->
         game_over_process(p)
     end
-  end
-
-  defp write_digit_diff(spi, 8, data, device, last_data) do
-    reg_data = Map.get(data, 8)
-    if is_nil(last_data) or Map.get(last_data, 8) != reg_data do
-      write_register(spi, 8, reg_data, device)
-    end
-
-    :ok
-  end
-
-  defp write_digit_diff(spi, number, data, device, last_data) do
-    reg_data = Map.get(data, number)
-    if is_nil(last_data) or Map.get(last_data, number) != reg_data do
-      write_register(spi, number, reg_data, device)
-    end
-
-    write_digit_diff(spi, number + 1, data, device, last_data)
   end
 
   defp new_game(spi) do

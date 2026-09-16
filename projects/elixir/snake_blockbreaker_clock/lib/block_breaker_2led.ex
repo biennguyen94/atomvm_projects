@@ -44,6 +44,7 @@ defmodule BlockBreaker2Led do
   - `low_range = 800` – lower threshold (move paddle left)
   - `high_range = 3000` – upper threshold (move paddle right)
   - ADC value range 0–4095 (12-bit)
+  - Polls every 30ms; paddle moves once every 3 polls (~90ms) while deflected
 
   ## Speed
   - `max_speed = 100` (fastest)
@@ -107,7 +108,8 @@ defmodule BlockBreaker2Led do
 
   @low_range 800
   @high_range 3000
-  @delay_read_adc 100
+  @delay_read_adc 30
+  @paddle_throttle 3
   @max_speed 100
   @min_speed 1000
   @bit_resolution 4095
@@ -473,8 +475,8 @@ defmodule BlockBreaker2Led do
         temp1 = remove_current_crossbar(state.data1, 1)
         temp2 = remove_current_crossbar(state.data2, 1)
         {data1, data2} = update_data(new_cross_bar, {temp1, temp2}, 0, 3)
-        write_digit(state.spi, @digit_0, data1, :device_1)
-        write_digit(state.spi, @digit_0, data2, :device_2)
+        write_digit_diff(state.spi, @digit_0, data1, :device_1, state.data1)
+        write_digit_diff(state.spi, @digit_0, data2, :device_2, state.data2)
         new_state = %{state | data1: data1, data2: data2, crossbar: new_cross_bar}
         {:noreply, new_state}
       else
@@ -508,8 +510,8 @@ defmodule BlockBreaker2Led do
           {:noreply, %{state | isgameover: true, score: new_score}}
         else
           {data1, data2} = update_ball(new_ball, ball, state.data1, state.data2)
-          write_digit(state.spi, @digit_0, data1, :device_1)
-          write_digit(state.spi, @digit_0, data2, :device_2)
+          write_digit_diff(state.spi, @digit_0, data1, :device_1, state.data1)
+          write_digit_diff(state.spi, @digit_0, data2, :device_2, state.data2)
           new_state = %{state | ball: %{0 => new_ball}, data1: data1, data2: data2, direction: new_direc, point: new_point, score: new_score}
           {:noreply, new_state}
         end
@@ -820,17 +822,34 @@ defmodule BlockBreaker2Led do
   end
 
   def joystick(pid, adcx, _adcy) do
+    joystick_loop(pid, adcx, 0)
+  end
+
+  defp joystick_loop(pid, adcx, counter) do
     receive do
       :stop -> :ok
     after
       @delay_read_adc ->
         {:ok, x} = read_adc(adcx)
+
+        dir =
+          cond do
+            x < @low_range -> -1
+            x > @high_range -> 1
+            true -> 0
+          end
+
         cond do
-          x < @low_range -> GenServer.cast(pid, {:move_cross_bar, -1})
-          x > @high_range -> GenServer.cast(pid, {:move_cross_bar, 1})
-          true -> :nothing_change
+          dir != 0 and counter >= @paddle_throttle - 1 ->
+            GenServer.cast(pid, {:move_cross_bar, dir})
+            joystick_loop(pid, adcx, 0)
+
+          dir != 0 ->
+            joystick_loop(pid, adcx, counter + 1)
+
+          true ->
+            joystick_loop(pid, adcx, 0)
         end
-        joystick(pid, adcx, _adcy)
     end
   end
 

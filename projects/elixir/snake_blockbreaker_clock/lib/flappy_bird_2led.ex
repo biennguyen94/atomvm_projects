@@ -67,7 +67,9 @@ defmodule FlappyBird2Led do
     :gameover,
     :goverproc,
     :joystick_pid,
-    :button_press_time
+    :button_press_time,
+    :last_data1,
+    :last_data2
   ]
 
   def start(spi) do
@@ -89,8 +91,7 @@ defmodule FlappyBird2Led do
     gpio = GPIO.open()
     GPIO.set_int(gpio, @gpio_sw, :both)
 
-    state = new_game_state(spi)
-    render_board(state)
+    state = render_board(new_game_state(spi))
     {:ok, state}
   end
 
@@ -231,9 +232,13 @@ defmodule FlappyBird2Led do
   end
 
   defp game_loop(pid, delay) do
-    Process.sleep(delay)
-    GenServer.cast(pid, :move)
-    game_loop(pid, delay)
+    receive do
+      {:newspeed, new_delay} -> game_loop(pid, new_delay)
+    after
+      delay ->
+        GenServer.cast(pid, :move)
+        game_loop(pid, delay)
+    end
   end
 
   defp new_game_state(spi) do
@@ -246,15 +251,17 @@ defmodule FlappyBird2Led do
       gameover: false,
       goverproc: nil,
       joystick_pid: nil,
-      button_press_time: nil
+      button_press_time: nil,
+      last_data1: nil,
+      last_data2: nil
     }
   end
 
   defp render_board(state) do
     {data1, data2} = build_display(state)
-    write_digit(state.spi, @digit_0, data1, :device_1)
-    write_digit(state.spi, @digit_0, data2, :device_2)
-    state
+    write_digit_diff(state.spi, @digit_0, data1, :device_1, state.last_data1)
+    write_digit_diff(state.spi, @digit_0, data2, :device_2, state.last_data2)
+    %{state | last_data1: data1, last_data2: data2}
   end
 
   defp render_game_over(spi, score) do

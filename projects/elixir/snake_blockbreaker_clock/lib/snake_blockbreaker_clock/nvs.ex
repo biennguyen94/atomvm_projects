@@ -40,8 +40,8 @@ defmodule SnakeBlockbreakerClock.NVS do
   All operations degrade gracefully to a no-op / 0 if NVS is unavailable.
   """
 
-  @wifi_ssid "HBTBK"
-  @wifi_passphrase "49494949"
+  @wifi_ssid "wifi_ssid"
+  @wifi_passphrase "wifi_passphrase"
 
   @high_score_namespace :high_scores
   @high_score_keys %{snake: :snake_hs, breaker: :breaker_hs, flappy: :flappy_hs, pong: :pong_hs}

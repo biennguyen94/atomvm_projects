@@ -154,6 +154,24 @@ defmodule SnakeBlockbreakerClock.LedDisplay do
     write_digit(spi, number + 1, data, device)
   end
 
+  def write_digit_diff(spi, 8, data, device, last_data) do
+    reg_data = Map.get(data, 8)
+    if is_nil(last_data) or Map.get(last_data, 8) != reg_data do
+      write_register(spi, 8, reg_data, device)
+    end
+
+    :ok
+  end
+
+  def write_digit_diff(spi, number, data, device, last_data) do
+    reg_data = Map.get(data, number)
+    if is_nil(last_data) or Map.get(last_data, number) != reg_data do
+      write_register(spi, number, reg_data, device)
+    end
+
+    write_digit_diff(spi, number + 1, data, device, last_data)
+  end
+
   def write_register(spi, address, data, device) do
     :spi.write_at(spi, device, address, 8, data)
   end
